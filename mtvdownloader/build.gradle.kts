@@ -66,7 +66,7 @@ afterEvaluate {
                 from(components["release"])
 
                 groupId = "com.github.kamleshmultitv"
-                artifactId = "mtvdownloadsdk"
+                artifactId = "mtvdownloader"
                 version = "download-1.0.0"
             }
         }

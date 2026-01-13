@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("maven-publish")
+   // id("maven-publish")
 }
 
 android {
@@ -60,19 +60,19 @@ android {
  * ✅ Maven Publish (KEEP OUTSIDE android {})
  * This publishes ONLY videosdk (not app)
  */
-afterEvaluate {
+/*afterEvaluate {
     publishing {
         publications {
             create<MavenPublication>("release") {
                 from(components["release"])
 
                 groupId = "com.github.kamleshmultitv"
-                artifactId = "mtvplayersdk"
+                artifactId = "videosdk"
                 version = "mobile-1.0.54"
             }
         }
     }
-}
+}*/
 
 dependencies {
     // Core
