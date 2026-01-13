@@ -1,0 +1,146 @@
+[
+  {
+    "id": "hin",
+    "name": "Hindi"
+  },
+  {
+    "id": "ben",
+    "name": "Bengali"
+  },
+  {
+    "id": "urd",
+    "name": "Urdu"
+  },
+  {
+    "id": "pan",
+    "name": "Punjabi"
+  },
+  {
+    "id": "mar",
+    "name": "Marathi"
+  },
+  {
+    "id": "tel",
+    "name": "Telugu"
+  },
+  {
+    "id": "tam",
+    "name": "Tamil"
+  },
+  {
+    "id": "guj",
+    "name": "Gujarati"
+  },
+  {
+    "id": "kan",
+    "name": "Kannada"
+  },
+  {
+    "id": "ori",
+    "name": "Oriya"
+  },
+  {
+    "id": "mal",
+    "name": "Malayalam"
+  },
+  {
+    "id": "asm",
+    "name": "Assamese"
+  },
+  {
+    "id": "san",
+    "name": "Sanskrit"
+  },
+  {
+    "id": "ara",
+    "name": "Arabic"
+  },
+  {
+    "id": "eng",
+    "name": "English"
+  },
+  {
+    "id": "may",
+    "name": "Bahasa Melayu"
+  },
+  {
+    "id": "ind",
+    "name": "Bahasa Indonesia"
+  },
+  {
+    "id": "hi",
+    "name": "Hindi"
+  },
+  {
+    "id": "bn",
+    "name": "Bengali"
+  },
+  {
+    "id": "ur",
+    "name": "Urdu"
+  },
+  {
+    "id": "pa",
+    "name": "Punjabi"
+  },
+  {
+    "id": "mr",
+    "name": "Marathi"
+  },
+  {
+    "id": "te",
+    "name": "Telugu"
+  },
+  {
+    "id": "ta",
+    "name": "Tamil"
+  },
+  {
+    "id": "gu",
+    "name": "Gujarati"
+  },
+  {
+    "id": "kn",
+    "name": "Kannada"
+  },
+  {
+    "id": "or",
+    "name": "Oriya"
+  },
+  {
+    "id": "ml",
+    "name": "Malayalam"
+  },
+  {
+    "id": "as",
+    "name": "Assamese"
+  },
+  {
+    "id": "sa",
+    "name": "Sanskrit"
+  },
+  {
+    "id": "ar",
+    "name": "Arabic"
+  },
+  {
+    "id": "en",
+    "name": "English"
+  },
+  {
+    "id": "ms",
+    "name": "Bahasa Melayu"
+  },
+  {
+    "id": "id",
+    "name": "Bahasa Indonesia"
+  },
+  {
+    "id": "nl",
+    "name": "Dutch"
+  },
+  {
+    "id": "off",
+    "name": "Off"
+  }
+]

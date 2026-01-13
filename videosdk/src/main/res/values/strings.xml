@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="audio_track">Audio Track</string>
+    <string name="close_caption">Close Caption</string>
+    <string name="speed">Speed</string>
+    <string name="video_quality">Quality</string>
+    <string name="app_id_prod">12C58D36</string>
+    <string name="app_id_preprod">12C58D36</string>
+</resources>
