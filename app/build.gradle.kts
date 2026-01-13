@@ -144,8 +144,9 @@ dependencies {
     implementation(libs.logging.interceptor)
 
     // SDK
-    implementation(project(":videosdk"))
-    implementation(project(":mtvdownloader"))
-   //  implementation(libs.mtvplayersdk)
+  //  implementation(project(":videosdk"))
+  //  implementation(project(":mtvdownloader"))
+     implementation(libs.mtvplayersdk)
+    implementation("com.github.kamleshmultitv:mtvdownloadsdk:1.0.0")
 
 }
