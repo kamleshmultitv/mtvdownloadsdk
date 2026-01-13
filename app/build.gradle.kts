@@ -5,14 +5,6 @@ plugins {
 }
 
 android {
-   /* signingConfigs {
-        create("release") {
-            storeFile = file("D:\\playersdk\\kxoplayer.jks")
-            storePassword = "Poojukamal21*"
-            keyAlias = "kxoplayer"
-            keyPassword = "Poojukamal21*"
-        }
-    }*/
     namespace = "com.app.sample"
     compileSdk = 36
 
@@ -145,8 +137,8 @@ dependencies {
 
     // SDK
   //  implementation(project(":videosdk"))
-  //  implementation(project(":mtvdownloader"))
+    implementation(project(":mtvdownloader"))
      implementation(libs.mtvplayersdk)
-    implementation("com.github.kamleshmultitv:mtvdownloadsdk:1.0.0")
+    // implementation(libs.mtvdownloadsdk)
 
 }
