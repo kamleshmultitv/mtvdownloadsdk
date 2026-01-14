@@ -52,7 +52,6 @@ fun ContentCard(
         )
 
         DownloadButton(
-            context = context,
             contentItem = downloadModel,
             modifier = Modifier.size(40.dp)
         )

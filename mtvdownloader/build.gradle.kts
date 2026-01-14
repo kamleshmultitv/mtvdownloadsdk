@@ -20,8 +20,6 @@ android {
     buildTypes {
         release {
             release {
-                isMinifyEnabled = true
-
                 proguardFiles(
                     getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro" // SDK internal rules
@@ -71,7 +69,7 @@ afterEvaluate {
 
                 groupId = "com.github.kamleshmultitv"
                 artifactId = "mtvdownloader"
-                version = "download-1.0.1"
+                version = "download-1.0.2"
             }
         }
     }

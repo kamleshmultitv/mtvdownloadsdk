@@ -19,26 +19,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.app.mtvdownloader.R
 import com.app.mtvdownloader.helper.ReelDownloadHelper.cancelDownload
 import com.app.mtvdownloader.helper.ReelDownloadHelper.pauseDownload
 import com.app.mtvdownloader.helper.ReelDownloadHelper.resumeDownload
-import com.app.mtvdownloader.helper.ReelDownloadHelper.showToast
 import com.app.mtvdownloader.helper.ReelDownloadHelper.startDownloadWithQuality
 import com.app.mtvdownloader.model.DownloadModel
 import com.app.mtvdownloader.viewmodel.DownloadViewModel
 import com.app.mtvdownloader.worker.DownloadWorker
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun DownloadButton(
-    context: Context,
     contentItem: DownloadModel?,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     if (contentItem == null) return
 
     var showMenu by remember { mutableStateOf(false) }
