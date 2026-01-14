@@ -71,7 +71,7 @@ afterEvaluate {
 
                 groupId = "com.github.kamleshmultitv"
                 artifactId = "mtvdownloader"
-                version = "download-1.0.0"
+                version = "download-1.0.1"
             }
         }
     }
