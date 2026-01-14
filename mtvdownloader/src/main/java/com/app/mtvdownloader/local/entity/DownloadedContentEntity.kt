@@ -15,5 +15,8 @@ data class DownloadedContentEntity(
     val seasonImage: String? = null,
     val downloadProgress: Int = 0,
     val downloadStatus: String,
-    val downloadedAt: Long? = null
+    val downloadedAt: Long? = null,
+    val streamKeys: String? = null,
+    val videoHeight: Int? = null,
+    val videoBitrate: Int? = null
 )

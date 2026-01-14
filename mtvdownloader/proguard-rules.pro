@@ -19,3 +19,25 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+####################################
+# REMOVE LOGS (SDK INTERNAL)
+####################################
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+####################################
+# AGGRESSIVE SHRINKING
+####################################
+-dontoptimize
+-optimizations !code/simplification/arithmetic
+
+####################################
+# KEEP ONLY PUBLIC SDK API
+####################################
+-keep public class com.app.mtvdownloader.** {
+    public *;
+}

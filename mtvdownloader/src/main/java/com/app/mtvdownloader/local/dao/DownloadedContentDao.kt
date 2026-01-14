@@ -10,6 +10,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface DownloadedContentDao {
 
+
+
+    @Query("DELETE FROM downloaded_content WHERE contentId = :contentId")
+    suspend fun deleteByContentId(contentId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(content: DownloadedContentEntity)
 
@@ -65,5 +70,16 @@ WHERE downloadStatus = :downloading
 """
     )
     suspend fun hasActiveDownload(downloading: String): Int
+
+    @Query(
+        """
+    SELECT * FROM downloaded_content
+    WHERE downloadStatus = :status
+    ORDER BY downloadedAt ASC
+    LIMIT 1
+    """
+    )
+    suspend fun getNextQueuedContent(status: String): DownloadedContentEntity?
+
 }
 

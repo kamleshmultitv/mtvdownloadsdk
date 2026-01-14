@@ -1,25 +1,22 @@
 package com.app.sample.composable
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.app.mtvdownloader.helper.ReelDownloadHelper
-import com.app.mtvdownloader.viewmodel.DownloadViewModel
-import com.app.mtvdownloader.worker.DownloadWorker
+import com.app.mtvdownloader.ui.DownloadButton
 import com.app.sample.R
 import com.app.sample.model.ContentItem
 import com.app.sample.utils.FileUtils.buildDownloadContentList
@@ -28,30 +25,11 @@ import com.app.sample.utils.FileUtils.buildDownloadContentList
 fun ContentCard(
     content: ContentItem?,
     playContent: () -> Unit,
-    downloadViewModel: DownloadViewModel
 ) {
     val context = LocalContext.current
 
     val downloadModel = remember(content) {
         buildDownloadContentList(context, content)
-    }
-
-    val downloadState by downloadViewModel
-        .observeDownload(content?.id.orEmpty())
-        .collectAsState(initial = null)
-
-    val status = downloadState?.downloadStatus
-    val progress = (downloadState?.downloadProgress ?: 0) / 100f
-
-    val iconRes = remember(status) {
-        when (status) {
-            DownloadWorker.DOWNLOAD_STATUS_QUEUED ->
-                R.drawable.ic_downlaod_queue
-            DownloadWorker.DOWNLOAD_STATUS_COMPLETED ->
-                R.drawable.ic_download_done
-            else ->
-                R.drawable.ic_download
-        }
     }
 
     Row(
@@ -73,46 +51,12 @@ fun ContentCard(
             overflow = TextOverflow.Ellipsis
         )
 
-        Box(
-            modifier = Modifier.size(40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-
-            if (status == DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING) {
-                CircularProgressIndicator(
-                    progress = progress,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color.White
-                )
-            }
-
-            IconButton(
-                onClick = {
-                  //  if (status == null) {
-                        downloadModel?.let {
-                            ReelDownloadHelper.handleDownloadClick(
-                                context = context,
-                                contentItem = it
-                            )
-                        }
-                   /* } else {
-                        Toast.makeText(
-                            context,
-                            status,
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }*/
-                },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = "Download",
-                    tint = Color.White
-                )
-            }
-        }
+        DownloadButton(
+            context = context,
+            contentItem = downloadModel,
+            modifier = Modifier.size(40.dp)
+        )
     }
 }
+
 

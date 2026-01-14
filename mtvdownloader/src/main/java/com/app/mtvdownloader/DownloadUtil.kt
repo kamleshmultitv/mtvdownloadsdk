@@ -35,7 +35,7 @@ object DownloadUtil {
 
     // ✅ Limit threads (disk + network safe)
     private val backgroundExecutor: Executor by lazy {
-        Executors.newFixedThreadPool(2)
+        Executors.newFixedThreadPool(1)
     }
 
     /* ---------------- DATABASE ---------------- */

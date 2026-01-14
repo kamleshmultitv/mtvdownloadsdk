@@ -2,10 +2,8 @@ package com.app.mtvdownloader.service
 
 import android.app.Notification
 import android.content.Context
-import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
@@ -28,30 +26,19 @@ class MediaDownloadService : DownloadService(
         const val CHANNEL_ID = "download_channel"
         private const val FOREGROUND_NOTIFICATION_ID = 1
 
+        /**
+         * ✅ CORRECT alternate solution
+         * Media3 safely starts foreground when ready
+         */
         fun start(context: Context) {
-            val intent = Intent(context, MediaDownloadService::class.java)
-
-            CoroutineScope(Dispatchers.Main).launch {
-                Util.startForegroundService(context.applicationContext, intent)
-            }
-
-            CoroutineScope(Dispatchers.IO).launch {
-                DownloadUtil.getDownloadManager(context.applicationContext)
-            }
+            start(
+                context.applicationContext,
+                MediaDownloadService::class.java
+            )
         }
     }
 
-    /** In-memory cache to avoid DB hits on main thread */
     private val titleCache = mutableMapOf<String, String>()
-
-    override fun onCreate() {
-        super.onCreate()
-
-        val initialNotification =
-            getForegroundNotification(mutableListOf(), 0)
-
-        startForeground(FOREGROUND_NOTIFICATION_ID, initialNotification)
-    }
 
     override fun getDownloadManager(): DownloadManager {
         return DownloadUtil.getDownloadManager(this)
@@ -72,47 +59,38 @@ class MediaDownloadService : DownloadService(
         return notificationHelper.buildProgressNotification(
             this,
             R.drawable.ic_download,
-            null,          // ✅ PendingIntent
-            title,         // ✅ Title text
+            null,
+            title,
             downloads,
             notMetRequirements
         )
     }
 
+    private fun resolveNotificationTitle(downloads: List<Download>): String {
 
-    /**
-     * Resolves notification title safely without blocking UI.
-     */
-    private fun resolveNotificationTitle(
-        downloads: List<Download>
-    ): String {
+        if (downloads.isEmpty()) return getString(R.string.app_name)
 
-        if (downloads.isEmpty()) {
-            return getString(R.string.app_name)
+        val activeCount = downloads.count {
+            it.state == Download.STATE_DOWNLOADING
         }
 
-        if (downloads.size > 1) {
-            return "Downloading ${downloads.size} items"
+        if (activeCount > 1) {
+            return "Downloading $activeCount items"
         }
 
         val contentId = downloads.first().request.id
-
-        // Return cached title if available
         titleCache[contentId]?.let { return it }
 
-        // Fetch title in background and cache it
         CoroutineScope(Dispatchers.IO).launch {
             val dao = DownloadDatabase
                 .getInstance(applicationContext)
                 .downloadedContentDao()
 
-            val entity = dao.getDownloadedContentOnce(contentId)
-            entity?.title?.let {
+            dao.getDownloadedContentOnce(contentId)?.title?.let {
                 titleCache[contentId] = it
             }
         }
 
-        // Temporary fallback (will update automatically)
         return getString(R.string.app_name)
     }
 }
