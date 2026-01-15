@@ -24,8 +24,8 @@ interface DownloadedContentDao {
     @Query("SELECT * FROM downloaded_content WHERE contentId = :contentId LIMIT 1")
     suspend fun getDownloadedContentOnce(contentId: String): DownloadedContentEntity?
 
-    @Query("SELECT * FROM downloaded_content WHERE hlsUrl = :hlsUrl LIMIT 1")
-    suspend fun getDownloadedContentByHlsUrl(hlsUrl: String): DownloadedContentEntity?
+    @Query("SELECT * FROM downloaded_content WHERE contentUrl = :contentUrl LIMIT 1")
+    suspend fun getDownloadedContentByContentUrl(contentUrl: String): DownloadedContentEntity?
 
     @Query("SELECT * FROM downloaded_content ORDER BY downloadedAt DESC")
     fun getAllDownloadedContent(): Flow<List<DownloadedContentEntity>>
@@ -82,4 +82,3 @@ WHERE downloadStatus = :downloading
     suspend fun getNextQueuedContent(status: String): DownloadedContentEntity?
 
 }
-

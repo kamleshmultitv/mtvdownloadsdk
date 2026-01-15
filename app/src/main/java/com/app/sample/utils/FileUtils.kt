@@ -179,6 +179,7 @@ object FileUtils {
             seasonId = contentItem.seasonId.orEmpty(),
             hlsUrl = hlsUrl,
             mpdUrl = mpdUrl,
+            drm = contentItem.drm,
             drmToken = getDrmToken(context, contentItem),
             imageUrl = contentItem.layoutThumbs
                 ?.firstOrNull()

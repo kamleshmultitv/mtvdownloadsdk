@@ -12,4 +12,5 @@ data class DownloadModel(
     val seasonTitle: String? = null,
     val seasonDescription: String? = null,
     val srt: String? = null,
+    val drm: String? = null,
 )

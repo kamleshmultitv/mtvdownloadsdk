@@ -1,8 +1,8 @@
 package com.app.mtvdownloader.ui
 
-import ShowQualitySelectorDialog
 import android.app.Application
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
 import com.app.mtvdownloader.helper.HlsQualityHelper
 import com.app.mtvdownloader.helper.ReelDownloadHelper.cancelDownload
 import com.app.mtvdownloader.helper.ReelDownloadHelper.pauseDownload
@@ -24,6 +25,7 @@ import com.app.mtvdownloader.provider.DownloadIconProvider
 import com.app.mtvdownloader.utils.CustomQualitySelector
 import com.app.mtvdownloader.viewmodel.DownloadViewModel
 import com.app.mtvdownloader.worker.DownloadWorker
+import kotlin.toString
 
 
 /**
@@ -41,6 +43,7 @@ import com.app.mtvdownloader.worker.DownloadWorker
  *
  * @param modifier Optional Compose modifier.
  */
+@OptIn(UnstableApi::class)
 @Composable
 fun DownloadButton(
     contentItem: DownloadModel,
@@ -51,7 +54,7 @@ fun DownloadButton(
     val context = LocalContext.current
 
     /* ---------- State ---------- */
-    var qualities by remember(contentItem.hlsUrl) {
+    var qualities by remember(if (contentItem.drm == "1") contentItem.mpdUrl.toString() else contentItem.hlsUrl.toString()) {
         mutableStateOf<List<DownloadQuality>>(emptyList())
     }
     var showSelector by remember { mutableStateOf(false) }
@@ -79,10 +82,10 @@ fun DownloadButton(
 
     /* ---------- Load qualities ---------- */
     suspend fun loadQualities() {
-        if (qualities.isEmpty() && contentItem.hlsUrl != null) {
+        if (qualities.isEmpty() && contentItem.hlsUrl != null && contentItem.mpdUrl != null) {
             qualities = HlsQualityHelper.getHlsQualities(
                 context,
-                contentItem.hlsUrl
+                if (contentItem.drm == "1") contentItem.mpdUrl else contentItem.hlsUrl
             )
         }
     }

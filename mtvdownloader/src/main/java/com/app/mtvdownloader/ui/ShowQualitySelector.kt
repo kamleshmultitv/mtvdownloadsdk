@@ -1,3 +1,5 @@
+package com.app.mtvdownloader.ui
+
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,7 +30,7 @@ fun ShowQualitySelectorDialog(
     LaunchedEffect(Unit) {
         qualities = HlsQualityHelper.getHlsQualities(
             context,
-            contentItem.hlsUrl.toString()
+            if (contentItem.drm == "1") contentItem.mpdUrl.toString() else contentItem.hlsUrl.toString()
         )
     }
 

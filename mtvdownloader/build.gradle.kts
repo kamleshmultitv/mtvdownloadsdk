@@ -67,7 +67,7 @@ afterEvaluate {
 
                 groupId = "com.github.kamleshmultitv"
                 artifactId = "mtvdownloader"
-                version = "download-1.0.7"
+                version = "download-1.0.8"
             }
         }
     }
@@ -102,4 +102,5 @@ dependencies {
     // ExoPlayer / Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.androidx.media3.exoplayer.dash)
 }

@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.toString
 
 /**
  * SDK-level download helper.
@@ -40,26 +41,35 @@ object ReelDownloadHelper {
         context: Context,
         contentItem: DownloadModel?
     ) {
-        if (contentItem?.hlsUrl.isNullOrEmpty()) return
+
+        if (
+            contentItem?.drm == "1" &&
+            contentItem.drm.isNotEmpty() &&
+            (contentItem.mpdUrl.isNullOrEmpty() || contentItem.hlsUrl.isNullOrEmpty())
+        ) {
+            return
+        }
 
         val appContext = context.applicationContext
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val repository = DownloadRepository.instance(appContext)
-                val contentId = contentItem.id.toString()
+                val contentId = contentItem?.id.toString()
 
                 when (repository.getDownloadedContentOnce(contentId)?.downloadStatus) {
                     DownloadWorker.DOWNLOAD_STATUS_COMPLETED -> {
-                        showToast(context, "${contentItem.title} already downloaded")
+                        showToast(context, "${contentItem?.title} already downloaded")
                         return@launch
                     }
+
                     DownloadWorker.DOWNLOAD_STATUS_QUEUED -> {
-                        showToast(context, "${contentItem.title} is already in queue")
+                        showToast(context, "${contentItem?.title} is already in queue")
                         return@launch
                     }
+
                     DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING -> {
-                        showToast(context, "${contentItem.title} is downloading")
+                        showToast(context, "${contentItem?.title} is downloading")
                         return@launch
                     }
                 }
@@ -69,32 +79,49 @@ object ReelDownloadHelper {
                 repository.insertOrUpdate(
                     DownloadedContentEntity(
                         contentId = contentId,
-                        seasonId = contentItem.seasonId.orEmpty(),
-                        title = contentItem.title.orEmpty(),
-                        seasonName = contentItem.seasonTitle.orEmpty(),
-                        hlsUrl = contentItem.hlsUrl,
-                        thumbnailUrl = contentItem.imageUrl,
-                        seasonImage = contentItem.imageUrl,
+                        seasonId = contentItem?.seasonId.orEmpty(),
+                        title = contentItem?.title.orEmpty(),
+                        seasonName = contentItem?.seasonTitle.orEmpty(),
+                        contentUrl = if (contentItem?.drm == "1") contentItem.mpdUrl.toString() else contentItem?.hlsUrl.toString(),
+                        licenseUri = contentItem?.drmToken.toString(),
+                        thumbnailUrl = contentItem?.imageUrl,
+                        seasonImage = contentItem?.imageUrl,
                         downloadStatus = DownloadWorker.DOWNLOAD_STATUS_QUEUED,
                         downloadProgress = 0
                     )
                 )
 
-                val workRequest =
-                    OneTimeWorkRequestBuilder<DownloadWorker>()
-                        .setInputData(
-                            Data.Builder()
-                                .putString(DownloadWorker.KEY_CONTENT_ID, contentId)
-                                .putString(DownloadWorker.KEY_SEASON_ID, contentItem.seasonId.orEmpty())
-                                .putString(DownloadWorker.KEY_CONTENT_TITLE, contentItem.title.orEmpty())
-                                .putString(DownloadWorker.KEY_SEASON_NAME, contentItem.seasonTitle.orEmpty())
-                                .putString(DownloadWorker.KEY_THUMBNAIL_URL, contentItem.imageUrl)
-                                .putString(DownloadWorker.KEY_SEASON_THUMBNAIL_URL, contentItem.imageUrl)
-                                .putString(DownloadWorker.KEY_HLS_URI, contentItem.hlsUrl)
-                                .build()
-                        )
-                        .addTag(contentId)
-                        .build()
+                val workRequestBuilder = OneTimeWorkRequestBuilder<DownloadWorker>()
+
+                val dataBuilder = Data.Builder()
+                    .putString(DownloadWorker.KEY_CONTENT_ID, contentId)
+                    .putString(
+                        DownloadWorker.KEY_SEASON_ID,
+                        contentItem?.seasonId.orEmpty()
+                    )
+                    .putString(
+                        DownloadWorker.KEY_CONTENT_TITLE,
+                        contentItem?.title.orEmpty()
+                    )
+                    .putString(
+                        DownloadWorker.KEY_SEASON_NAME,
+                        contentItem?.seasonTitle.orEmpty()
+                    )
+                    .putString(DownloadWorker.KEY_THUMBNAIL_URL, contentItem?.imageUrl)
+                    .putString(
+                        DownloadWorker.KEY_SEASON_THUMBNAIL_URL,
+                        contentItem?.imageUrl
+                    )
+
+                if (contentItem?.drm == "1") {
+                    dataBuilder.putString(DownloadWorker.KEY_CONTENT_URI, contentItem.mpdUrl.toString())
+                    dataBuilder.putString(DownloadWorker.KEY_DRM_LICENSE_URI, contentItem.drmToken.toString()) // Add license URL for DRM
+                } else {
+                    dataBuilder.putString(DownloadWorker.KEY_CONTENT_URI, contentItem?.hlsUrl.toString())
+                }
+
+                workRequestBuilder.setInputData(dataBuilder.build())
+                val workRequest = workRequestBuilder.addTag(contentId).build()
 
                 WorkManager.getInstance(appContext)
                     .enqueueUniqueWork(
@@ -133,10 +160,12 @@ object ReelDownloadHelper {
                     showToast(context, "${contentItem.title} already downloaded")
                     return@launch
                 }
+
                 DownloadWorker.DOWNLOAD_STATUS_QUEUED -> {
                     showToast(context, "${contentItem.title} is already in queue")
                     return@launch
                 }
+
                 DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING -> {
                     showToast(context, "${contentItem.title} is downloading")
                     return@launch
@@ -151,7 +180,8 @@ object ReelDownloadHelper {
                     seasonId = contentItem.seasonId.orEmpty(),
                     title = contentItem.title.orEmpty(),
                     seasonName = contentItem.seasonTitle.orEmpty(),
-                    hlsUrl = contentItem.hlsUrl.toString(),
+                    contentUrl = if (contentItem.drm == "1") contentItem.mpdUrl.toString() else contentItem.hlsUrl.toString(),
+                    licenseUri = contentItem.drmToken.toString(),
                     thumbnailUrl = contentItem.imageUrl,
                     seasonImage = contentItem.imageUrl,
                     downloadStatus = DownloadWorker.DOWNLOAD_STATUS_QUEUED,
@@ -162,20 +192,24 @@ object ReelDownloadHelper {
                 )
             )
 
-            val workRequest =
-                OneTimeWorkRequestBuilder<DownloadWorker>()
-                    .setInputData(
-                        Data.Builder()
-                            .putString(DownloadWorker.KEY_CONTENT_ID, contentId)
-                            .putString(DownloadWorker.KEY_HLS_URI, contentItem.hlsUrl)
-                            .putString(
-                                DownloadWorker.KEY_STREAM_KEYS,
-                                StreamKeyUtil.toString(listOf(quality.streamKey))
-                            )
-                            .build()
-                    )
-                    .addTag(contentId)
-                    .build()
+            val workRequestBuilder = OneTimeWorkRequestBuilder<DownloadWorker>()
+
+            val dataBuilder = Data.Builder()
+                .putString(DownloadWorker.KEY_CONTENT_ID, contentId)
+                .putString(
+                    DownloadWorker.KEY_STREAM_KEYS,
+                    StreamKeyUtil.toString(listOf(quality.streamKey))
+                )
+
+            if (contentItem.drm == "1") {
+                dataBuilder.putString(DownloadWorker.KEY_CONTENT_URI, contentItem.mpdUrl.toString())
+                dataBuilder.putString(DownloadWorker.KEY_DRM_LICENSE_URI, contentItem.drmToken.toString()) // Add license URL for DRM
+            } else {
+                dataBuilder.putString(DownloadWorker.KEY_CONTENT_URI, contentItem.hlsUrl.toString())
+            }
+
+            workRequestBuilder.setInputData(dataBuilder.build())
+            val workRequest = workRequestBuilder.addTag(contentId).build()
 
             WorkManager.getInstance(appContext)
                 .enqueueUniqueWork(
@@ -230,7 +264,8 @@ object ReelDownloadHelper {
                                 DownloadWorker.KEY_SEASON_THUMBNAIL_URL,
                                 nextQueued.seasonImage
                             )
-                            .putString(DownloadWorker.KEY_HLS_URI, nextQueued.hlsUrl)
+                            .putString(DownloadWorker.KEY_CONTENT_URI, nextQueued.contentUrl)
+                            .putString(DownloadWorker.KEY_DRM_LICENSE_URI, nextQueued.licenseUri)
                             .build()
                     )
                     .addTag(nextQueued.contentId)
@@ -300,12 +335,16 @@ object ReelDownloadHelper {
                                 .putString(DownloadWorker.KEY_SEASON_ID, nextQueued.seasonId)
                                 .putString(DownloadWorker.KEY_CONTENT_TITLE, nextQueued.title)
                                 .putString(DownloadWorker.KEY_SEASON_NAME, nextQueued.seasonName)
-                                .putString(DownloadWorker.KEY_THUMBNAIL_URL, nextQueued.thumbnailUrl)
+                                .putString(
+                                    DownloadWorker.KEY_THUMBNAIL_URL,
+                                    nextQueued.thumbnailUrl
+                                )
                                 .putString(
                                     DownloadWorker.KEY_SEASON_THUMBNAIL_URL,
                                     nextQueued.seasonImage
                                 )
-                                .putString(DownloadWorker.KEY_HLS_URI, nextQueued.hlsUrl)
+                                .putString(DownloadWorker.KEY_CONTENT_URI, nextQueued.contentUrl)
+                                .putString(DownloadWorker.KEY_DRM_LICENSE_URI, nextQueued.licenseUri)
                                 .build()
                         )
                         .addTag(nextQueued.contentId)
