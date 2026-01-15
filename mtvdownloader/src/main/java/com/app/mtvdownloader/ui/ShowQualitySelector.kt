@@ -1,51 +1,66 @@
-package com.app.mtvdownloader.ui
-
 import android.content.Context
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import com.app.mtvdownloader.helper.HlsQualityHelper
 import com.app.mtvdownloader.model.DownloadModel
 import com.app.mtvdownloader.model.DownloadQuality
 
 @Composable
-fun ShowQualitySelector(
+fun ShowQualitySelectorDialog(
     context: Context,
     contentItem: DownloadModel,
     onDismiss: () -> Unit,
     onQualitySelected: (DownloadQuality) -> Unit
 ) {
     var qualities by remember { mutableStateOf<List<DownloadQuality>>(emptyList()) }
-    var expanded by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         qualities = HlsQualityHelper.getHlsQualities(
             context,
-            contentItem.hlsUrl!!
+            contentItem.hlsUrl.toString()
         )
     }
 
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = {
-            expanded = false
-            onDismiss()
-        }
-    ) {
-        qualities.forEach { quality ->
-            DropdownMenuItem(
-                text = { Text(quality.label) },
-                onClick = {
-                    expanded = false
-                    onQualitySelected(quality)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Select Download Quality")
+        },
+        text = {
+            Column {
+                qualities.forEach { quality ->
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            onQualitySelected(quality)
+                            onDismiss()
+                        }
+                    ) {
+                        Text(
+                            text = quality.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
+                    }
                 }
-            )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
         }
-    }
+    )
 }
