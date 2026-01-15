@@ -15,7 +15,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.app.mtvdownloader.ui.DownloadButton
-import com.app.mtvdownloader.ui.DownloadIconProvider
+import com.app.mtvdownloader.provider.DownloadIconProvider
 import com.app.mtvdownloader.worker.DownloadWorker
 import com.app.sample.R
 import com.app.sample.model.ContentItem

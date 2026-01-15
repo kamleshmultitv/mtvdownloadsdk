@@ -19,6 +19,8 @@ import com.app.mtvdownloader.helper.ReelDownloadHelper.resumeDownload
 import com.app.mtvdownloader.helper.ReelDownloadHelper.startDownloadWithQuality
 import com.app.mtvdownloader.model.DownloadModel
 import com.app.mtvdownloader.model.DownloadQuality
+import com.app.mtvdownloader.provider.DefaultDownloadIconProvider
+import com.app.mtvdownloader.provider.DownloadIconProvider
 import com.app.mtvdownloader.utils.CustomQualitySelector
 import com.app.mtvdownloader.viewmodel.DownloadViewModel
 import com.app.mtvdownloader.worker.DownloadWorker

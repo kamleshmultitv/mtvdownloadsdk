@@ -1,4 +1,4 @@
-package com.app.mtvdownloader.ui
+package com.app.mtvdownloader.provider
 
 import androidx.annotation.DrawableRes
 import com.app.mtvdownloader.R

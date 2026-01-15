@@ -22,7 +22,6 @@ class DownloadRepository private constructor(appContext: Context) {
     private val dao: DownloadedContentDao =
         DownloadDatabase.getInstance(appContext).downloadedContentDao()
 
-    @OptIn(UnstableApi::class)
     private val downloadManager: DownloadManager =
         DownloadUtil.getDownloadManager(appContext)
 
@@ -74,21 +73,13 @@ class DownloadRepository private constructor(appContext: Context) {
         dao.insert(entity)
     }
 
-    suspend fun updateStatus(contentId: String, status: String) {
-        dao.updateStatus(contentId, status)
-    }
-
-    suspend fun deleteByContentId(contentId: String) {
-        dao.deleteByContentId(contentId)
-    }
-
     suspend fun getNextQueuedContent(): DownloadedContentEntity? {
         return dao.getNextQueuedContent(
             DownloadWorker.DOWNLOAD_STATUS_QUEUED
         )
     }
 
-    @OptIn(UnstableApi::class)
+
     suspend fun pauseDownload(contentId: String) {
 
         // 1️⃣ Update DB (UI + queue logic)

@@ -1,9 +1,7 @@
 package com.app.mtvdownloader
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.database.ExoDatabaseProvider
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -11,7 +9,6 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
-import androidx.media3.exoplayer.offline.DownloadRequest
 import java.io.File
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -19,7 +16,6 @@ import java.util.concurrent.Executors
 /**
  * Media3 Download utility (Singleton)
  */
-@OptIn(UnstableApi::class)
 object DownloadUtil {
 
     private const val TAG = "DownloadUtil"
@@ -131,17 +127,6 @@ object DownloadUtil {
         }
     }
 
-    /* ---------------- DOWNLOAD REQUEST ---------------- */
-
-    fun buildDownloadRequest(
-        contentId: String,
-        url: String
-    ): DownloadRequest {
-        return DownloadRequest.Builder(
-            contentId,
-            Uri.parse(url)
-        ).build()
-    }
 
     /* ---------------- PATH UTILITY ---------------- */
 
