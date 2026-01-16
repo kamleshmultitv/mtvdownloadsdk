@@ -49,11 +49,11 @@ android {
                 "STATIC_AUTH_TOKEN",
                 "\"abd07061a3dd9851e3c9dd551e68e26838b29e87b2baa479c0eb53c95cac2e6bd701b5588ca7a85de55c6504e0c84c44edc468ae6fdb7a48cf170ee055cd7b3a5960795cf0c3d2989f1aedec0d93fd9d\""
             )
-          //  signingConfig = signingConfigs.getByName("release")
+            //  signingConfig = signingConfigs.getByName("release")
         }
 
         debug {
-          //  signingConfig = signingConfigs.getByName("release") // ✅ REQUIRED
+            //  signingConfig = signingConfigs.getByName("release") // ✅ REQUIRED
             isMinifyEnabled = false
             isShrinkResources = false
 
@@ -135,10 +135,13 @@ dependencies {
     implementation(libs.adapter.rxjava2)
     implementation(libs.logging.interceptor)
 
+    implementation(libs.coil.compose)
+
     // SDK
-  //  implementation(project(":videosdk"))
+    // implementation(project(":videosdk"))
+    // implementation(libs.mtvdownloadsdk)
+
+    implementation(libs.mtvplayersdk)
     implementation(project(":mtvdownloader"))
-     implementation(libs.mtvplayersdk)
-   //  implementation(libs.mtvdownloadsdk)
 
 }

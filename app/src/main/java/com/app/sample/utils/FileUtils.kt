@@ -2,6 +2,7 @@ package com.app.sample.utils
 
 import android.content.Context
 import androidx.paging.compose.LazyPagingItems
+import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.mtvdownloader.model.DownloadModel
 import com.app.sample.BuildConfig.DRM_LICENSE_URL
 import com.app.sample.extra.ApiConstant.DRM_TYPE
@@ -57,6 +58,36 @@ object FileUtils {
                 "&authorization=$TOKEN" +
                 "&payload=${ApiEncryptionHelper.convertStringToBase64(payload.toString())}"
     }
+
+    fun buildContentListFromDownloaded(
+        downloadedContentEntity: DownloadedContentEntity
+    ): List<PlayerModel> {
+        return listOf(
+            PlayerModel(
+                // ▶️ Playback URL
+                hlsUrl = downloadedContentEntity.contentUrl,
+                mpdUrl = downloadedContentEntity.contentUrl,
+
+                // 🔐 DRM
+                drmToken = downloadedContentEntity.licenseUri,
+
+                // 🖼️ Artwork
+                imageUrl = downloadedContentEntity.thumbnailUrl
+                    ?: downloadedContentEntity.seasonImage,
+
+                // 📝 Metadata
+                title = downloadedContentEntity.title,
+                seasonTitle = downloadedContentEntity.seasonName,
+
+                // 🎞️ Quality preference (fallback to 1080)
+                selectedVideoQuality = downloadedContentEntity.videoHeight ?: 1080,
+
+                // 📡 Downloaded content is NOT live
+                isLive = false
+            )
+        )
+    }
+
 
     /* ---------------------------------- */
     /* PLAYER MODEL BUILDER                */

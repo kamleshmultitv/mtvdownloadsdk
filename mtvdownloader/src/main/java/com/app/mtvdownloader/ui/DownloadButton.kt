@@ -18,6 +18,7 @@ import com.app.mtvdownloader.helper.ReelDownloadHelper.cancelDownload
 import com.app.mtvdownloader.helper.ReelDownloadHelper.pauseDownload
 import com.app.mtvdownloader.helper.ReelDownloadHelper.resumeDownload
 import com.app.mtvdownloader.helper.ReelDownloadHelper.startDownloadWithQuality
+import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.mtvdownloader.model.DownloadModel
 import com.app.mtvdownloader.model.DownloadQuality
 import com.app.mtvdownloader.provider.DefaultDownloadIconProvider
@@ -49,7 +50,8 @@ fun DownloadButton(
     contentItem: DownloadModel,
     modifier: Modifier = Modifier,
     customQualitySelector: CustomQualitySelector? = null, // optional
-    iconProvider: DownloadIconProvider = DefaultDownloadIconProvider // optional
+    iconProvider: DownloadIconProvider = DefaultDownloadIconProvider, // optional
+    onDownloadedListUpdate: (List<DownloadedContentEntity>) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -72,6 +74,14 @@ fun DownloadButton(
 
     val status = downloadState?.downloadStatus
     val progress = (downloadState?.downloadProgress ?: 0) / 100f
+
+    val downloadedList by viewModel
+        .getAllDownloadedContent()
+        .collectAsState(initial = emptyList())
+
+    LaunchedEffect(downloadedList) {
+        onDownloadedListUpdate(downloadedList)
+    }
 
     /* ---------- Download Executor ---------- */
     val startDownload: (DownloadQuality) -> Unit = remember(contentItem.id) {

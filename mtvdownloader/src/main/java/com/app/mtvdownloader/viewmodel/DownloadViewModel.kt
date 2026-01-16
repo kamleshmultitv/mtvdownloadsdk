@@ -11,10 +11,14 @@ import kotlinx.coroutines.flow.Flow
 class DownloadViewModel(application: Application) :
     AndroidViewModel(application) {
 
-    private val repository =
-        DownloadRepository.instance(application)
+    private val repository = DownloadRepository.instance(application)
 
     fun observeDownload(contentId: String): Flow<DownloadedContentEntity?> {
         return repository.getDownloadedContent(contentId)
+    }
+
+    // ✅ NEW: get all downloaded content list
+    fun getAllDownloadedContent(): Flow<List<DownloadedContentEntity>> {
+        return repository.getAllDownloadedContent()
     }
 }

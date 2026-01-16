@@ -6,13 +6,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemsIndexed
+import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.sample.model.ContentItem
 
 @Composable
 fun ContentList(
     pagingItems: LazyPagingItems<ContentItem>,
     modifier: Modifier = Modifier,
-    onItemClick: (Int) -> Unit
+    onItemClick: (Int) -> Unit,
+    downloadContentList: (List<DownloadedContentEntity>) -> Unit
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth()
@@ -26,6 +28,9 @@ fun ContentList(
                     content = it,
                     playContent = {
                         onItemClick(index)
+                    },
+                    downloadContentList = { list ->
+                        downloadContentList(list)
                     }
                 )
             }
