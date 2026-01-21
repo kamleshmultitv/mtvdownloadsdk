@@ -18,12 +18,7 @@ object DownloadSdk {
         if (isInitialized) return
 
         try {
-            // ✅ ONLY create notification channel
             createDownloadNotificationChannel(application)
-
-            // ❌ DO NOT start MediaDownloadService here
-            // MediaDownloadService.start(application)  <-- REMOVED
-
             isInitialized = true
             Log.d(TAG, "Download SDK initialized successfully")
         } catch (t: Throwable) {

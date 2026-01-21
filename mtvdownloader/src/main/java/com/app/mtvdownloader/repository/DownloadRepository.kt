@@ -9,7 +9,10 @@ import com.app.mtvdownloader.DownloadUtil
 import com.app.mtvdownloader.local.dao.DownloadedContentDao
 import com.app.mtvdownloader.local.database.DownloadDatabase
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
-import com.app.mtvdownloader.worker.DownloadWorker
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_DOWNLOADING
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_PAUSED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_QUEUED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_REMOVED
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -45,7 +48,7 @@ class DownloadRepository private constructor(appContext: Context) {
         // 1️⃣ Update DB first (UI reacts immediately)
         dao.updateStatus(
             contentId,
-            DownloadWorker.DOWNLOAD_STATUS_REMOVED
+            DOWNLOAD_STATUS_REMOVED
         )
 
         // 2️⃣ Remove from Media3
@@ -65,7 +68,7 @@ class DownloadRepository private constructor(appContext: Context) {
 
     suspend fun hasActiveDownload(): Boolean {
         return dao.hasActiveDownload(
-            DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING
+            DOWNLOAD_STATUS_DOWNLOADING
         ) > 0
     }
 
@@ -75,7 +78,7 @@ class DownloadRepository private constructor(appContext: Context) {
 
     suspend fun getNextQueuedContent(): DownloadedContentEntity? {
         return dao.getNextQueuedContent(
-            DownloadWorker.DOWNLOAD_STATUS_QUEUED
+            DOWNLOAD_STATUS_QUEUED
         )
     }
 
@@ -85,7 +88,7 @@ class DownloadRepository private constructor(appContext: Context) {
         // 1️⃣ Update DB (UI + queue logic)
         dao.updateStatus(
             contentId,
-            DownloadWorker.DOWNLOAD_STATUS_PAUSED
+            DOWNLOAD_STATUS_PAUSED
         )
 
         // 2️⃣ Remove ONLY this download from Media3

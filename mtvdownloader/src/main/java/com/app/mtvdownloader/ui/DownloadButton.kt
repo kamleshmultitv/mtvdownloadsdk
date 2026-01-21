@@ -23,9 +23,12 @@ import com.app.mtvdownloader.model.DownloadModel
 import com.app.mtvdownloader.model.DownloadQuality
 import com.app.mtvdownloader.provider.DefaultDownloadIconProvider
 import com.app.mtvdownloader.provider.DownloadIconProvider
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_COMPLETED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_DOWNLOADING
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_PAUSED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_QUEUED
 import com.app.mtvdownloader.utils.CustomQualitySelector
 import com.app.mtvdownloader.viewmodel.DownloadViewModel
-import com.app.mtvdownloader.worker.DownloadWorker
 import kotlin.toString
 
 
@@ -108,7 +111,7 @@ fun DownloadButton(
     /* ---------- UI ---------- */
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
 
-        if (status == DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING) {
+        if (status == DOWNLOAD_STATUS_DOWNLOADING) {
             CircularProgressIndicator(
                 progress = progress,
                 strokeWidth = 2.dp,
@@ -120,13 +123,13 @@ fun DownloadButton(
         IconButton(
             onClick = {
                 when (status) {
-                    DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING,
-                    DownloadWorker.DOWNLOAD_STATUS_QUEUED,
-                    DownloadWorker.DOWNLOAD_STATUS_PAUSED -> {
+                    DOWNLOAD_STATUS_DOWNLOADING,
+                    DOWNLOAD_STATUS_QUEUED,
+                    DOWNLOAD_STATUS_PAUSED -> {
                         showMenu = true
                     }
 
-                    DownloadWorker.DOWNLOAD_STATUS_COMPLETED -> {
+                    DOWNLOAD_STATUS_COMPLETED -> {
                         Toast.makeText(
                             context,
                             "${contentItem.title} already downloaded",
@@ -153,7 +156,7 @@ fun DownloadButton(
             onDismissRequest = { showMenu = false }
         ) {
 
-            if (status == DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING) {
+            if (status == DOWNLOAD_STATUS_DOWNLOADING) {
                 DropdownMenuItem(
                     text = { Text("Pause Download") },
                     onClick = {
@@ -163,7 +166,7 @@ fun DownloadButton(
                 )
             }
 
-            if (status == DownloadWorker.DOWNLOAD_STATUS_PAUSED) {
+            if (status == DOWNLOAD_STATUS_PAUSED) {
                 DropdownMenuItem(
                     text = { Text("Resume Download") },
                     onClick = {

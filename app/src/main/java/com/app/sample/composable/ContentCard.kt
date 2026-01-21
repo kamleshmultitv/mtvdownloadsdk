@@ -17,7 +17,10 @@ import androidx.compose.ui.unit.sp
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.mtvdownloader.ui.DownloadButton
 import com.app.mtvdownloader.provider.DownloadIconProvider
-import com.app.mtvdownloader.worker.DownloadWorker
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_COMPLETED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_DOWNLOADING
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_PAUSED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_QUEUED
 import com.app.sample.R
 import com.app.sample.model.ContentItem
 import com.app.sample.utils.FileUtils.buildDownloadContentList
@@ -64,16 +67,16 @@ fun ContentCard(
             },
             iconProvider = DownloadIconProvider { status ->
                 when (status) {
-                    DownloadWorker.DOWNLOAD_STATUS_PAUSED ->
+                    DOWNLOAD_STATUS_PAUSED ->
                         R.drawable.ic_download_pause
 
-                    DownloadWorker.DOWNLOAD_STATUS_QUEUED ->
+                    DOWNLOAD_STATUS_QUEUED ->
                         R.drawable.ic_downlaod_queue
 
-                    DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING ->
+                    DOWNLOAD_STATUS_DOWNLOADING ->
                         R.drawable.ic_downloading
 
-                    DownloadWorker.DOWNLOAD_STATUS_COMPLETED ->
+                    DOWNLOAD_STATUS_COMPLETED ->
                         R.drawable.ic_download_done
 
                     else ->

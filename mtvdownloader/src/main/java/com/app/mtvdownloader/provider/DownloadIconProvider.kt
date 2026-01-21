@@ -2,7 +2,10 @@ package com.app.mtvdownloader.provider
 
 import androidx.annotation.DrawableRes
 import com.app.mtvdownloader.R
-import com.app.mtvdownloader.worker.DownloadWorker
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_COMPLETED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_DOWNLOADING
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_PAUSED
+import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_QUEUED
 
 fun interface DownloadIconProvider {
     @DrawableRes
@@ -12,13 +15,13 @@ fun interface DownloadIconProvider {
 object DefaultDownloadIconProvider : DownloadIconProvider {
     override fun iconFor(status: String?): Int {
         return when (status) {
-            DownloadWorker.DOWNLOAD_STATUS_PAUSED ->
+            DOWNLOAD_STATUS_PAUSED ->
                 R.drawable.ic_download_pause
-            DownloadWorker.DOWNLOAD_STATUS_QUEUED ->
+            DOWNLOAD_STATUS_QUEUED ->
                 R.drawable.ic_downlaod_queue
-            DownloadWorker.DOWNLOAD_STATUS_COMPLETED ->
+            DOWNLOAD_STATUS_COMPLETED ->
                 R.drawable.ic_download_done
-            DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING ->
+            DOWNLOAD_STATUS_DOWNLOADING ->
                 R.drawable.ic_downloading
             else ->
                 R.drawable.ic_download
