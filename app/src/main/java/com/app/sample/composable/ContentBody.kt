@@ -25,6 +25,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.sample.AppClass
 import com.app.sample.R
 import com.app.sample.composable.download.DownloadPlayer
 import com.app.sample.composable.download.DownloadedContentList
@@ -34,6 +35,7 @@ import com.app.sample.utils.FileUtils.buildPlayerContentList
 import com.app.videosdk.listener.PipListener
 import com.app.videosdk.listener.PlayerStateListener
 import com.app.videosdk.ui.MtvVideoPlayerSdk
+import okhttp3.internal.platform.PlatformRegistry.applicationContext
 
 @Composable
 fun ContentBody(
@@ -65,6 +67,9 @@ fun ContentBody(
     var showDownloadedList by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<DownloadedContentEntity?>(null) }
 
+    val cacheFactory =
+        (applicationContext as AppClass).cacheDataSourceFactory
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -78,6 +83,7 @@ fun ContentBody(
                 selectedIndex.intValue
             ) {
                 MtvVideoPlayerSdk(
+                    cacheFactory = cacheFactory,
                     contentList = contentList,
                     index = selectedIndex.intValue,
                     pipListener = pipListener,

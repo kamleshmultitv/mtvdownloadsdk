@@ -2,6 +2,9 @@ package com.app.videosdk.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.net.toUri
@@ -12,6 +15,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.ima.ImaAdsLoader
@@ -22,11 +26,13 @@ import androidx.media3.exoplayer.trackselection.MappingTrackSelector
 import androidx.media3.ui.PlayerView
 import com.app.videosdk.listener.AdsListener
 import com.app.videosdk.model.AdsConfig
+import com.app.videosdk.model.PlayerModel
 import com.app.videosdk.model.SubTitleModel
 import com.app.videosdk.model.VideoQualityModel
 import com.google.ads.interactivemedia.v3.api.AdEvent
 import com.google.common.collect.ImmutableList
 import com.google.gson.Gson
+import java.io.File
 import kotlin.math.pow
 
 object PlayerUtils {
@@ -37,7 +43,9 @@ object PlayerUtils {
 
     @OptIn(UnstableApi::class)
     fun createPlayer(
+        cacheDataSourceFactory: CacheDataSource.Factory,
         context: Context,
+        contentList: List<PlayerModel>,
         videoUrl: String,
         drmToken: String? = null,
         srt: String? = null,
@@ -47,10 +55,18 @@ object PlayerUtils {
         existingAdsLoader: ImaAdsLoader? = null
     ): Pair<ExoPlayer, ImaAdsLoader?> {
 
-        // ❗ Contract check (unchanged)
-        require(videoUrl.isNotBlank()) { "videoUrl must not be blank" }
+        // ---------------------------------------------------------
+        // Resolve playable URI (online or offline)
+        // ---------------------------------------------------------
+        val resolvedUri = resolveToPlayableUri(context, contentList)
+        require(resolvedUri != Uri.EMPTY) { "No playable content available" }
 
-        val cleanUrl = videoUrl.substringBefore("?")
+        val cleanUrl =
+            if (resolvedUri.scheme == "http" || resolvedUri.scheme == "https")
+                resolvedUri.toString().substringBefore("?")
+            else
+                resolvedUri.toString()
+
         val isDash = cleanUrl.endsWith(".mpd", ignoreCase = true)
 
         /* =========================================================
@@ -78,30 +94,32 @@ object PlayerUtils {
                             Log.e("IMA", "Ad error", error.error)
                         }
                         .build()
-                } else {
-                    null
-                }
+                } else null
 
         /* =========================================================
            MEDIA SOURCE FACTORY
            ========================================================= */
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(context).apply {
+        val mediaSourceFactory =
+            DefaultMediaSourceFactory(context)
+                .setDataSourceFactory(cacheDataSourceFactory)
+                .apply {
 
-            if (isDash && !drmToken.isNullOrBlank()) {
-                val drmProvider = DefaultDrmSessionManagerProvider().apply {
-                    setDrmHttpDataSourceFactory(DefaultHttpDataSource.Factory())
-                }
-                setDrmSessionManagerProvider(drmProvider)
-            }
+                    if (isDash && !drmToken.isNullOrBlank()) {
+                        val drmProvider = DefaultDrmSessionManagerProvider().apply {
+                            setDrmHttpDataSourceFactory(DefaultHttpDataSource.Factory())
+                        }
+                        setDrmSessionManagerProvider(drmProvider)
+                    }
 
-            adsLoader?.let { loader ->
-                setAdsLoaderProvider { loader }
-                playerView?.let { view ->
-                    setAdViewProvider { view }
+                    adsLoader?.let { loader ->
+                        setAdsLoaderProvider { loader }
+                        playerView?.let { view ->
+                            setAdViewProvider { view }
+                        }
+                    }
                 }
-            }
-        }
+
 
         /* =========================================================
            PLAYER
@@ -122,7 +140,7 @@ object PlayerUtils {
 
         val mediaItemBuilder =
             MediaItem.Builder()
-                .setUri(videoUrl.toUri())
+                .setUri(resolvedUri)
                 .setMimeType(
                     when {
                         cleanUrl.endsWith(".mpd", true) -> MimeTypes.APPLICATION_MPD
@@ -170,6 +188,70 @@ object PlayerUtils {
         return exoPlayer to adsLoader
     }
 
+    fun resolveToPlayableUri(
+        context: Context,
+        contentList: List<PlayerModel>
+    ): Uri {
+
+        if (contentList.isEmpty()) return Uri.EMPTY
+
+        val content = contentList.first()
+        val hasInternet = isInternetAvailable(context)
+
+        val mpd = content.mpdUrl
+        val hls = content.hlsUrl
+        val live = content.liveUrl
+
+        /* =========================================================
+           OFFLINE MODE → ONLY LOCAL FILE / CONTENT URI
+           ========================================================= */
+        if (!hasInternet) {
+
+            val localCandidate = mpd ?: hls ?: live ?: return Uri.EMPTY
+
+            return when {
+                localCandidate.startsWith("content://") ->
+                    Uri.parse(localCandidate)
+
+                localCandidate.startsWith("http://") ->
+                    Uri.parse(localCandidate)
+
+                localCandidate.startsWith("https://") ->
+                    Uri.parse(localCandidate)
+
+                localCandidate.startsWith("file://") ->
+                    Uri.parse(localCandidate)
+
+                localCandidate.startsWith("/") -> {
+                    val file = File(localCandidate)
+                    if (file.exists()) Uri.fromFile(file) else Uri.EMPTY
+                }
+
+                localCandidate.startsWith("content://") ->
+                    Uri.parse(localCandidate)
+
+                else -> Uri.EMPTY // ❌ http/https NOT allowed offline
+            }
+        }
+
+        /* =========================================================
+           ONLINE MODE → REMOTE STREAM
+           ========================================================= */
+        val remoteUrl = mpd ?: hls ?: live
+        return if (!remoteUrl.isNullOrBlank()) {
+            Uri.parse(remoteUrl)
+        } else {
+            Uri.EMPTY
+        }
+    }
+
+
+    fun isInternetAvailable(context: Context): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
 
     private fun initializeSubTitleTracker(srt: String): MediaItem.SubtitleConfiguration {

@@ -1,16 +1,23 @@
 package com.app.sample
 
 import android.app.Application
-import android.os.Build
-import androidx.annotation.RequiresApi
-import com.app.mtvdownloader.init.DownloadSdk
+import androidx.media3.datasource.cache.CacheDataSource
+import com.app.mtvdownloader.DownloadUtil
 
 class AppClass : Application() {
 
-    @RequiresApi(Build.VERSION_CODES.O)
+    lateinit var cacheDataSourceFactory: CacheDataSource.Factory
+        private set
+
     override fun onCreate() {
         super.onCreate()
 
-        DownloadSdk.init(this)
+        cacheDataSourceFactory =
+            CacheDataSource.Factory()
+                .setCache(DownloadUtil.getDownloadCache(this))
+                .setUpstreamDataSourceFactory(
+                    DownloadUtil.getHttpFactory(this)
+                )
+                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     }
 }

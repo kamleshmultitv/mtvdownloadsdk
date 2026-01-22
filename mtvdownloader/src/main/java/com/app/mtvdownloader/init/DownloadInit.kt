@@ -8,7 +8,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.app.mtvdownloader.service.MediaDownloadService
 
-object DownloadSdk {
+object DownloadInit {
 
     private const val TAG = "DownloadSdk"
     private var isInitialized = false

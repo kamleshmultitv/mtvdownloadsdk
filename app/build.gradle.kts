@@ -136,12 +136,13 @@ dependencies {
     implementation(libs.logging.interceptor)
 
     implementation(libs.coil.compose)
+    implementation("androidx.media3:media3-datasource:1.2.1")
 
     // SDK
-    // implementation(project(":videosdk"))
+     implementation(project(":videosdk"))
     // implementation(libs.mtvdownloadsdk)
 
-    implementation(libs.mtvplayersdk)
+   // implementation(libs.mtvplayersdk)
     implementation(project(":mtvdownloader"))
 
 }
