@@ -23,13 +23,17 @@ open class ContentViewModel : ViewModel() {
         ContentPagingSource(getContentModel)
     }.flow.cachedIn(viewModelScope)
 
+
+    init {
+        setContent()
+    }
     fun setContent() {
         getContentModel = GetContentModel(
             url = "https://api.artofliving.app/artoflivingapi/v10/content/list",
             contentId = "114080",
             token = TOKEN,
             seasonId = "2171",
-          //  seasonId = "2225",
+           // seasonId = "2225",
             offset = "0",
             limit = "5",
             isGroup = "1"

@@ -46,11 +46,12 @@ fun ContentBody(
     onFullScreenChange: (Boolean) -> Unit,
     onOverrideContent: (OverrideContent?) -> Unit
 ) {
-    // 🔥 IMPORTANT: no derivedStateOf here
-    val contentList = remember(
-        pagingItems.itemSnapshotList.items,
-        overrideContent
-    ) {
+
+    /* ---------------------------------------------------------
+     * ✅ STABLE CONTENT LIST
+     * Rebuild ONLY when overrideContent changes
+     * --------------------------------------------------------- */
+    val contentList = remember(overrideContent) {
         buildPlayerContentList(
             context = context,
             pagingItems = pagingItems,
@@ -58,56 +59,86 @@ fun ContentBody(
         )
     }
 
+    /* ---------------------------------------------------------
+     * ✅ DOWNLOADED CONTENT STATE
+     * --------------------------------------------------------- */
     val downloadedContentList = remember {
         mutableStateListOf<DownloadedContentEntity>()
     }
 
     var showDownloadedList by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<DownloadedContentEntity?>(null) }
+
+    /* ---------------------------------------------------------
+     * ✅ STABLE PLAYER KEY
+     * Player recreates ONLY when real playback content changes
+     * --------------------------------------------------------- */
+    val playerKey = remember(
+        overrideContent?.url,
+        overrideContent?.drmToken,
+        selectedIndex.intValue
+    ) {
+        "${overrideContent?.url ?: "list"}_${selectedIndex.intValue}"
+    }
+
+    /* ---------------------------------------------------------
+     * ✅ STABLE LISTENER (VERY IMPORTANT)
+     * --------------------------------------------------------- */
+    val playerStateListener = remember {
+        object : PlayerStateListener {
+
+            override fun onPlayerReady(durationMs: Long) {
+                Log.d("CLIENT", "Player ready: $durationMs")
+            }
+
+            override fun onPlayStateChanged(isPlaying: Boolean) {
+                Log.d("CLIENT", "Playing: $isPlaying")
+            }
+
+            override fun onPlaybackCompleted() {
+                Log.d("CLIENT", "Playback completed")
+            }
+
+            override fun onFullScreenChanged(isFullScreen: Boolean) {
+                Log.d("CLIENT", "Full screen: $isFullScreen")
+            }
+
+            override fun onAdStateChanged(isAdPlaying: Boolean) {
+                Log.d("CLIENT", "Ad playing = $isAdPlaying")
+            }
+        }
+    }
+
+    /* ---------------------------------------------------------
+     * ✅ UI
+     * --------------------------------------------------------- */
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorResource(R.color.black))
     ) {
+
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // 🎬 SDK Video Player (KEYED)
-            key(
-                contentList,
-                selectedIndex.intValue
-            ) {
+            /* ---------------------------------------------------------
+             * 🎬 VIDEO PLAYER (KEYED CORRECTLY)
+             * --------------------------------------------------------- */
+            key(playerKey) {
+                Log.d("PLAYER", "MtvVideoPlayerSdk COMPOSED")
+
                 MtvVideoPlayerSdk(
                     contentList = contentList,
                     index = selectedIndex.intValue,
                     pipListener = pipListener,
-                    onPlayerBack = {  },
+                    onPlayerBack = {},
                     setFullScreen = onFullScreenChange,
-                    playerStateListener = object : PlayerStateListener {
-
-                        override fun onPlayerReady(durationMs: Long) {
-                            Log.d("CLIENT", "Player ready: $durationMs")
-                        }
-
-                        override fun onPlayStateChanged(isPlaying: Boolean) {
-                            Log.d("CLIENT", "Playing: $isPlaying")
-                        }
-
-                        override fun onPlaybackCompleted() {
-                            Log.d("CLIENT", "Playback completed")
-                        }
-
-                        override fun onFullScreenChanged(isFullScreen: Boolean) {
-                            Log.d("CLIENT", "Full screen: $isFullScreen")
-                        }
-
-                        override fun onAdStateChanged(isAdPlaying: Boolean) {
-                            Log.d("CLIENT", "Ad playing = $isAdPlaying")
-                        }
-                    }
+                    playerStateListener = playerStateListener
                 )
             }
 
-            // 📜 Content List
+            /* ---------------------------------------------------------
+             * 📜 CONTENT LIST
+             * --------------------------------------------------------- */
             ContentList(
                 pagingItems = pagingItems,
                 onItemClick = { index ->
@@ -121,15 +152,16 @@ fun ContentBody(
             )
         }
 
-        // ➕ Floating Action Button
+        /* ---------------------------------------------------------
+         * ➕ FLOATING BUTTON (OVERRIDE CONTENT)
+         * --------------------------------------------------------- */
         if (!isFullScreen) {
             FloatButton { config ->
 
                 if (config.url.isBlank()) {
-                    // ✅ APPLY CONFIG TO EXISTING API CONTENT
                     onOverrideContent(
                         OverrideContent(
-                            url = null,                 // 👈 IMPORTANT
+                            url = null,
                             drmToken = null,
                             isLive = false,
                             adsConfig = config.adsConfig,
@@ -138,7 +170,6 @@ fun ContentBody(
                         )
                     )
                 } else {
-                    // ✅ OVERRIDE CONTENT
                     selectedIndex.intValue = 0
                     onOverrideContent(
                         OverrideContent(
@@ -152,14 +183,14 @@ fun ContentBody(
                     )
                 }
             }
-
         }
 
+        /* ---------------------------------------------------------
+         * ⬇️ DOWNLOADED CONTENT FAB
+         * --------------------------------------------------------- */
         if (downloadedContentList.isNotEmpty()) {
             FloatingActionButton(
-                onClick = {
-                    showDownloadedList = true
-                },
+                onClick = { showDownloadedList = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 32.dp, bottom = 160.dp),
@@ -167,7 +198,6 @@ fun ContentBody(
                 contentColor = colorResource(R.color.white),
                 shape = androidx.compose.foundation.shape.CircleShape
             ) {
-                // ✅ FAB content (ICON / TEXT REQUIRED)
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Downloads"
@@ -175,21 +205,32 @@ fun ContentBody(
             }
         }
 
+        /* ---------------------------------------------------------
+         * 📂 DOWNLOADED LIST
+         * --------------------------------------------------------- */
         if (showDownloadedList) {
-            DownloadedContentList(downloadContentList = downloadedContentList,
+            DownloadedContentList(
+                downloadContentList = downloadedContentList,
                 onItemClick = { item ->
                     selectedItem = item
                 },
                 onBackClick = {
                     showDownloadedList = false
-                })
+                }
+            )
         }
 
+        /* ---------------------------------------------------------
+         * ▶️ DOWNLOAD PLAYER
+         * --------------------------------------------------------- */
         selectedItem?.let { item ->
-            DownloadPlayer(item,
+            DownloadPlayer(
+                item,
                 onBack = {
                     selectedItem = null
-                })
+                }
+            )
         }
     }
 }
+

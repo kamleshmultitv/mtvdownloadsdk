@@ -24,12 +24,7 @@ fun ContentScreen(
 
     val selectedIndex = remember { mutableIntStateOf(0) }
     var isFullScreen by remember { mutableStateOf(false) }
-
     var overrideContent by remember { mutableStateOf<OverrideContent?>(null) }
-
-    LaunchedEffect(Unit) {
-        viewModel.setContent()
-    }
 
     when (pagingItems.loadState.refresh) {
         LoadState.Loading -> LoadingView()
@@ -46,4 +41,5 @@ fun ContentScreen(
         )
     }
 }
+
 

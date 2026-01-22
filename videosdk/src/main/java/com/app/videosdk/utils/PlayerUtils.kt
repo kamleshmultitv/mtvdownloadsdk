@@ -96,12 +96,16 @@ object PlayerUtils {
                 } else null
 
         /* =========================================================
-           MEDIA SOURCE FACTORY
+           DATA SOURCE FACTORY
            ========================================================= */
 
         val dataSourceFactory: DataSource.Factory =
             contentList.first().cacheFactory
                 ?: DefaultHttpDataSource.Factory()
+
+        /* =========================================================
+           MEDIA SOURCE FACTORY (FIXED DRM)
+           ========================================================= */
 
         val mediaSourceFactory =
             DefaultMediaSourceFactory(context)
@@ -109,11 +113,15 @@ object PlayerUtils {
                 .apply {
 
                     if (isDash && !drmToken.isNullOrBlank()) {
-                        val drmProvider = DefaultDrmSessionManagerProvider().apply {
-                            setDrmHttpDataSourceFactory(DefaultHttpDataSource.Factory())
-                        }
+                        val drmProvider =
+                            DefaultDrmSessionManagerProvider().apply {
+                                setDrmHttpDataSourceFactory(
+                                    DefaultHttpDataSource.Factory()
+                                )
+                            }
                         setDrmSessionManagerProvider(drmProvider)
                     }
+
 
                     adsLoader?.let { loader ->
                         setAdsLoaderProvider { loader }
@@ -122,8 +130,6 @@ object PlayerUtils {
                         }
                     }
                 }
-
-
 
         /* =========================================================
            PLAYER
@@ -154,20 +160,23 @@ object PlayerUtils {
                     }
                 )
 
+        // ✅ DASH DRM (ONLINE)
         if (isDash && !drmToken.isNullOrBlank()) {
             mediaItemBuilder.setDrmConfiguration(
                 MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
-                    .setLicenseUri(drmToken.toUri())
+                    .setLicenseUri(drmToken.toUri()) // unchanged logic
                     .build()
             )
         }
 
+        // Subtitles
         if (!srt.isNullOrBlank()) {
             mediaItemBuilder.setSubtitleConfigurations(
                 ImmutableList.of(initializeSubTitleTracker(srt))
             )
         }
 
+        // Ads
         if (
             adsLoader != null &&
             adsConfig?.enableAds == true &&
@@ -191,6 +200,7 @@ object PlayerUtils {
 
         return exoPlayer to adsLoader
     }
+
 
     fun resolveToPlayableUri(
         context: Context,
