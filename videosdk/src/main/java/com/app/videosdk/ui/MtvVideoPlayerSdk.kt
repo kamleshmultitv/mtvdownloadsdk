@@ -50,7 +50,6 @@ import kotlin.math.max
 @OptIn(UnstableApi::class)
 @Composable
 fun MtvVideoPlayerSdk(
-    cacheFactory: CacheDataSource.Factory,
     contentList: List<PlayerModel>? = null,
     index: Int? = 0,
     pipListener: PipListener? = null,
@@ -171,7 +170,6 @@ fun MtvVideoPlayerSdk(
     val playerWithAds = remember(selectedIndex.intValue, playbackUrl) {
         val model = playerModel ?: return@remember null
         PlayerUtils.createPlayer(
-            cacheDataSourceFactory = cacheFactory,
             context = context,
             contentList,
             videoUrl = playbackUrl.toString(),

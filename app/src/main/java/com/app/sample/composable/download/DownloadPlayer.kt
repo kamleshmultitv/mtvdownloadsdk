@@ -23,15 +23,12 @@ fun DownloadPlayer(
     onBack: () -> Unit
 ) {
 
-    val cacheFactory =
-        (applicationContext as AppClass).cacheDataSourceFactory
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorResource(R.color.ic_launcher_background))
     ) {
         MtvVideoPlayerSdk(
-            cacheFactory,
             contentList = buildContentListFromDownloaded(downloadedContentEntity),
             index = 0,
             startInFullScreen = true,

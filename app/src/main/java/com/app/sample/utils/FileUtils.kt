@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.paging.compose.LazyPagingItems
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.mtvdownloader.model.DownloadModel
+import com.app.sample.AppClass
 import com.app.sample.BuildConfig.DRM_LICENSE_URL
 import com.app.sample.extra.ApiConstant.DRM_TYPE
 import com.app.sample.extra.ApiConstant.PAID
@@ -14,6 +15,7 @@ import com.app.videosdk.model.AdsConfig
 import com.app.videosdk.model.NextEpisode
 import com.app.videosdk.model.PlayerModel
 import com.app.videosdk.model.SkipIntro
+import okhttp3.internal.platform.PlatformRegistry.applicationContext
 import org.json.JSONObject
 
 object FileUtils {
@@ -62,6 +64,8 @@ object FileUtils {
     fun buildContentListFromDownloaded(
         downloadedContentEntity: DownloadedContentEntity
     ): List<PlayerModel> {
+
+        val cacheFactory = (applicationContext as AppClass).cacheDataSourceFactory
         return listOf(
             PlayerModel(
                 // ▶️ Playback URL
@@ -83,7 +87,8 @@ object FileUtils {
                 selectedVideoQuality = downloadedContentEntity.videoHeight ?: 1080,
 
                 // 📡 Downloaded content is NOT live
-                isLive = false
+                isLive = false,
+                cacheFactory = cacheFactory
             )
         )
     }

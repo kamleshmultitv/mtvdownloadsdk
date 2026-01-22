@@ -14,8 +14,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.ima.ImaAdsLoader
@@ -43,7 +43,6 @@ object PlayerUtils {
 
     @OptIn(UnstableApi::class)
     fun createPlayer(
-        cacheDataSourceFactory: CacheDataSource.Factory,
         context: Context,
         contentList: List<PlayerModel>,
         videoUrl: String,
@@ -100,9 +99,13 @@ object PlayerUtils {
            MEDIA SOURCE FACTORY
            ========================================================= */
 
+        val dataSourceFactory: DataSource.Factory =
+            contentList.first().cacheFactory
+                ?: DefaultHttpDataSource.Factory()
+
         val mediaSourceFactory =
             DefaultMediaSourceFactory(context)
-                .setDataSourceFactory(cacheDataSourceFactory)
+                .setDataSourceFactory(dataSourceFactory)
                 .apply {
 
                     if (isDash && !drmToken.isNullOrBlank()) {
@@ -119,6 +122,7 @@ object PlayerUtils {
                         }
                     }
                 }
+
 
 
         /* =========================================================
