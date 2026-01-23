@@ -33,7 +33,7 @@ open class ContentViewModel : ViewModel() {
             contentId = "114080",
             token = TOKEN,
             seasonId = "2171",
-           // seasonId = "2225",
+         //   seasonId = "2225",
             offset = "0",
             limit = "5",
             isGroup = "1"

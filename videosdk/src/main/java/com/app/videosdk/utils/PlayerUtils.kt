@@ -1,5 +1,6 @@
 package com.app.videosdk.utils
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.ConnectivityManager
@@ -7,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.annotation.RequiresPermission
 import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.Format
@@ -41,10 +43,12 @@ object PlayerUtils {
        PLAYER + IMA
        ========================================================= */
 
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     @OptIn(UnstableApi::class)
     fun createPlayer(
         context: Context,
         contentList: List<PlayerModel>,
+        selectedIndex: Int = 0,
         videoUrl: String,
         drmToken: String? = null,
         srt: String? = null,
@@ -57,16 +61,9 @@ object PlayerUtils {
         // ---------------------------------------------------------
         // Resolve playable URI (online or offline)
         // ---------------------------------------------------------
-        val resolvedUri = resolveToPlayableUri(context, contentList)
+        val resolvedUri = resolveToPlayableUri(context, contentList, selectedIndex)
         require(resolvedUri != Uri.EMPTY) { "No playable content available" }
-
-        val cleanUrl =
-            if (resolvedUri.scheme == "http" || resolvedUri.scheme == "https")
-                resolvedUri.toString().substringBefore("?")
-            else
-                resolvedUri.toString()
-
-        val isDash = cleanUrl.endsWith(".mpd", ignoreCase = true)
+        val isDash = resolvedUri.toString().endsWith(".mpd", ignoreCase = true)
 
         /* =========================================================
            ADS LOADER
@@ -100,7 +97,7 @@ object PlayerUtils {
            ========================================================= */
 
         val dataSourceFactory: DataSource.Factory =
-            contentList.first().cacheFactory
+            contentList[selectedIndex].cacheFactory
                 ?: DefaultHttpDataSource.Factory()
 
         /* =========================================================
@@ -113,13 +110,17 @@ object PlayerUtils {
                 .apply {
 
                     if (isDash && !drmToken.isNullOrBlank()) {
+                        val drmHttpFactory =
+                            DefaultHttpDataSource.Factory()
+                                .setAllowCrossProtocolRedirects(true)
+
                         val drmProvider =
                             DefaultDrmSessionManagerProvider().apply {
-                                setDrmHttpDataSourceFactory(
-                                    DefaultHttpDataSource.Factory()
-                                )
+                                setDrmHttpDataSourceFactory(drmHttpFactory)
                             }
+
                         setDrmSessionManagerProvider(drmProvider)
+
                     }
 
 
@@ -153,9 +154,9 @@ object PlayerUtils {
                 .setUri(resolvedUri)
                 .setMimeType(
                     when {
-                        cleanUrl.endsWith(".mpd", true) -> MimeTypes.APPLICATION_MPD
-                        cleanUrl.endsWith(".m3u8", true) -> MimeTypes.APPLICATION_M3U8
-                        cleanUrl.endsWith(".mp4", true) -> MimeTypes.VIDEO_MP4
+                        resolvedUri.toString().endsWith(".mpd", true) -> MimeTypes.APPLICATION_MPD
+                        resolvedUri.toString().endsWith(".m3u8", true) -> MimeTypes.APPLICATION_M3U8
+                        resolvedUri.toString().endsWith(".mp4", true) -> MimeTypes.VIDEO_MP4
                         else -> null
                     }
                 )
@@ -164,7 +165,14 @@ object PlayerUtils {
         if (isDash && !drmToken.isNullOrBlank()) {
             mediaItemBuilder.setDrmConfiguration(
                 MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
-                    .setLicenseUri(drmToken.toUri()) // unchanged logic
+                    .setLicenseUri(drmToken.toUri())
+                    .setLicenseRequestHeaders(
+                        mapOf(
+                            "Content-Type" to "application/octet-stream"
+                            // Add Authorization header ONLY if your backend requires it
+                            // "Authorization" to "Bearer YOUR_TOKEN"
+                        )
+                    )
                     .build()
             )
         }
@@ -202,16 +210,15 @@ object PlayerUtils {
     }
 
 
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     fun resolveToPlayableUri(
         context: Context,
-        contentList: List<PlayerModel>
+        contentList: List<PlayerModel>,
+        selectedIndex: Int = 0
     ): Uri {
-
         if (contentList.isEmpty()) return Uri.EMPTY
-
-        val content = contentList.first()
+        val content = contentList[selectedIndex]
         val hasInternet = isInternetAvailable(context)
-
         val mpd = content.mpdUrl
         val hls = content.hlsUrl
         val live = content.liveUrl
@@ -220,46 +227,48 @@ object PlayerUtils {
            OFFLINE MODE → ONLY LOCAL FILE / CONTENT URI
            ========================================================= */
         if (!hasInternet) {
-
-            val localCandidate = mpd ?: hls ?: live ?: return Uri.EMPTY
+            val localCandidate = if (content.drm == "1") {
+                mpd
+            } else {
+                hls ?: live ?: Uri.EMPTY
+            }
+            val candidate = localCandidate.toString()
 
             return when {
-                localCandidate.startsWith("content://") ->
-                    Uri.parse(localCandidate)
+                candidate.startsWith("content://") ||
+                        candidate.startsWith("http://") ||
+                        candidate.startsWith("https://") ||
+                        candidate.startsWith("file://") -> {
+                    Uri.parse(candidate)
+                }
 
-                localCandidate.startsWith("http://") ->
-                    Uri.parse(localCandidate)
-
-                localCandidate.startsWith("https://") ->
-                    Uri.parse(localCandidate)
-
-                localCandidate.startsWith("file://") ->
-                    Uri.parse(localCandidate)
-
-                localCandidate.startsWith("/") -> {
-                    val file = File(localCandidate)
+                candidate.startsWith("/") -> {
+                    val file = File(candidate)
                     if (file.exists()) Uri.fromFile(file) else Uri.EMPTY
                 }
 
-                localCandidate.startsWith("content://") ->
-                    Uri.parse(localCandidate)
-
-                else -> Uri.EMPTY // ❌ http/https NOT allowed offline
+                else -> Uri.EMPTY
             }
         }
 
         /* =========================================================
            ONLINE MODE → REMOTE STREAM
            ========================================================= */
-        val remoteUrl = mpd ?: hls ?: live
-        return if (!remoteUrl.isNullOrBlank()) {
+        val localCandidate = if (content.drm == "1") {
+            mpd
+        } else {
+            hls ?: live ?: Uri.EMPTY
+        }
+
+        val remoteUrl = localCandidate.toString()
+        return if (remoteUrl.isNotBlank()) {
             Uri.parse(remoteUrl)
         } else {
             Uri.EMPTY
         }
     }
 
-
+    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     fun isInternetAvailable(context: Context): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = cm.activeNetwork ?: return false

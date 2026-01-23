@@ -172,6 +172,7 @@ fun MtvVideoPlayerSdk(
         PlayerUtils.createPlayer(
             context = context,
             contentList,
+            selectedIndex.value,
             videoUrl = playbackUrl.toString(),
             drmToken = model.drmToken,
             srt = subtitleUri,

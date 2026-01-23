@@ -1,6 +1,8 @@
 package com.app.sample.utils
 
 import android.content.Context
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.paging.compose.LazyPagingItems
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.mtvdownloader.model.DownloadModel
@@ -61,6 +63,7 @@ object FileUtils {
                 "&payload=${ApiEncryptionHelper.convertStringToBase64(payload.toString())}"
     }
 
+    @OptIn(UnstableApi::class)
     fun buildContentListFromDownloaded(
         downloadedContentEntity: DownloadedContentEntity
     ): List<PlayerModel> {
@@ -98,6 +101,7 @@ object FileUtils {
     /* PLAYER MODEL BUILDER                */
     /* ---------------------------------- */
 
+    @OptIn(UnstableApi::class)
     fun buildPlayerContentList(
         context: Context,
         pagingItems: LazyPagingItems<ContentItem>,
@@ -125,6 +129,7 @@ object FileUtils {
                         liveUrl = null,
                         isLive = false,
 
+                        drm = content.drm,
                         drmToken = getDrmToken(context, content),
 
                         imageUrl = content.layoutThumbs
@@ -167,6 +172,8 @@ object FileUtils {
 
         return pagingItems.itemSnapshotList.items.mapNotNull { content ->
 
+            val cacheFactory = (applicationContext as AppClass).cacheDataSourceFactory
+
             val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
             val mpd = content.url?.takeIf { it.isNotBlank() }
             if (hls == null && mpd == null) return@mapNotNull null
@@ -177,6 +184,7 @@ object FileUtils {
                 liveUrl = null,
                 isLive = false,
 
+                drm = content.drm,
                 drmToken = getDrmToken(context, content),
 
                 imageUrl = content.layoutThumbs
@@ -192,7 +200,8 @@ object FileUtils {
                 // ✅ DEFAULTS (no submit yet)
                 adsConfig = AdsConfig(enableAds = false),
                 skipIntro = SkipIntro(enableSkipIntro = false),
-                nextEpisode = NextEpisode(enableNextEpisode = false)
+                nextEpisode = NextEpisode(enableNextEpisode = false),
+                cacheFactory = cacheFactory
             )
         }
     }

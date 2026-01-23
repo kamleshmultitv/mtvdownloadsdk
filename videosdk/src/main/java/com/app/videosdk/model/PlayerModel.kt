@@ -6,6 +6,7 @@ data class PlayerModel(
     val hlsUrl: String? = null,
     val mpdUrl: String? = null,
     val liveUrl: String? = null,
+    val drm: String? = null,
     val drmToken: String? = null,
     val imageUrl: String? = null,
     val title: String? = null,
