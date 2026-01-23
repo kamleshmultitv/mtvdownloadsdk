@@ -22,6 +22,26 @@ fun DownloadPlayer(
     downloadedContentEntity: DownloadedContentEntity,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val contentList = buildContentListFromDownloaded(downloadedContentEntity)
+    
+    // ✅ DEBUG: Log offline playback setup
+    Log.d("DownloadPlayer", "=== OFFLINE PLAYBACK DEBUG ===")
+    Log.d("DownloadPlayer", "ContentId: ${downloadedContentEntity.contentId}")
+    Log.d("DownloadPlayer", "DownloadStatus: ${downloadedContentEntity.downloadStatus}")
+    Log.d("DownloadPlayer", "ContentUrl: ${downloadedContentEntity.contentUrl}")
+    Log.d("DownloadPlayer", "LicenseUri: ${downloadedContentEntity.licenseUri}")
+    Log.d("DownloadPlayer", "DRM: ${contentList.firstOrNull()?.drm}")
+    Log.d("DownloadPlayer", "HasCacheFactory: ${contentList.firstOrNull()?.cacheFactory != null}")
+    Log.d("DownloadPlayer", "MPD URL: ${contentList.firstOrNull()?.mpdUrl}")
+    Log.d("DownloadPlayer", "HLS URL: ${contentList.firstOrNull()?.hlsUrl}")
+    
+    // ✅ Verify download is completed
+    if (downloadedContentEntity.downloadStatus != "completed") {
+        Log.w("DownloadPlayer", "⚠️ WARNING: Download status is '${downloadedContentEntity.downloadStatus}', not 'completed'. Playback may fail.")
+    }
+    
+    Log.d("DownloadPlayer", "=============================")
 
     Box(
         modifier = Modifier
@@ -29,7 +49,7 @@ fun DownloadPlayer(
             .background(colorResource(R.color.ic_launcher_background))
     ) {
         MtvVideoPlayerSdk(
-            contentList = buildContentListFromDownloaded(downloadedContentEntity),
+            contentList = contentList,
             index = 0,
             startInFullScreen = true,
             onPlayerBack = {},
@@ -37,26 +57,26 @@ fun DownloadPlayer(
             playerStateListener = object : PlayerStateListener {
 
                 override fun onPlayerReady(durationMs: Long) {
-                    Log.d("CLIENT", "Player ready: $durationMs")
+                    Log.d("DownloadPlayer", "✅ Player ready: $durationMs ms")
                 }
 
                 override fun onPlayStateChanged(isPlaying: Boolean) {
-                    Log.d("CLIENT", "Playing: $isPlaying")
+                    Log.d("DownloadPlayer", "▶️ Playing: $isPlaying")
                 }
 
                 override fun onPlaybackCompleted() {
-                    Log.d("CLIENT", "Playback completed")
+                    Log.d("DownloadPlayer", "✅ Playback completed")
                 }
 
                 override fun onFullScreenChanged(isFullScreen: Boolean) {
                     if (!isFullScreen) {
                         onBack()
                     }
-                    Log.d("CLIENT", "Full screen: $isFullScreen")
+                    Log.d("DownloadPlayer", "📱 Full screen: $isFullScreen")
                 }
 
                 override fun onAdStateChanged(isAdPlaying: Boolean) {
-                    Log.d("CLIENT", "Ad playing = $isAdPlaying")
+                    Log.d("DownloadPlayer", "📺 Ad playing = $isAdPlaying")
                 }
             }
         )

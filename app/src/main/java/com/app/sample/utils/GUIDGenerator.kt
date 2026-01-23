@@ -11,7 +11,7 @@ object GUIDGenerator {
     fun generateGUID(context: Context?): String {
         // Generate GUID using Android ID and Serial
         val guid = createGUIDFromAndroidIDAndSerial(context)
-        
+
         // Convert GUID to Base64 string and return
         return convertGUIDToBase64(guid)
     }
@@ -30,7 +30,7 @@ object GUIDGenerator {
 
         // Concatenate the Android ID and Serial to generate a unique GUID
         val guidString = "$androidId$serialId"
-        
+
         // Convert the concatenated string to UUID
         return UUID.nameUUIDFromBytes(guidString.toByteArray())
     }

@@ -118,12 +118,24 @@ fun MtvVideoPlayerSdk(
     val isLive = playerModel?.isLive == true
 
     val playbackUrl = remember(playerModel) {
-        when {
+        val url = when {
+            // Live content always uses liveUrl
             isLive -> playerModel.liveUrl
+
+            // DRM content must use MPD
+            playerModel?.drm == "1" && !playerModel.mpdUrl.isNullOrEmpty() -> playerModel.mpdUrl
+
+            // Non‑DRM: prefer HLS, then MPD as fallback
             !playerModel?.hlsUrl.isNullOrEmpty() -> playerModel.hlsUrl
             !playerModel?.mpdUrl.isNullOrEmpty() -> playerModel.mpdUrl
+
             else -> ""
         }
+        
+        // ✅ DEBUG: Log URL selection
+        android.util.Log.d("MtvVideoPlayerSdk", "Selected playbackUrl: $url (DRM=${playerModel?.drm}, isLive=$isLive)")
+        
+        url
     }
 
     val subtitleUri = if (isLive) "" else playerModel?.srt.orEmpty()
@@ -169,11 +181,15 @@ fun MtvVideoPlayerSdk(
 
     val playerWithAds = remember(selectedIndex.intValue, playbackUrl) {
         val model = playerModel ?: return@remember null
+        val urlString = playbackUrl?.toString() ?: ""
+        
+        android.util.Log.d("MtvVideoPlayerSdk", "Creating player with url: $urlString, drmToken: ${if (model.drmToken.isNullOrBlank()) "null" else "present"}")
+        
         PlayerUtils.createPlayer(
             context = context,
             contentList,
-            selectedIndex.value,
-            videoUrl = playbackUrl.toString(),
+            selectedIndex.intValue,
+            videoUrl = urlString,
             drmToken = model.drmToken,
             srt = subtitleUri,
             playerView = playerView,
@@ -238,6 +254,10 @@ fun MtvVideoPlayerSdk(
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                android.util.Log.e("MtvVideoPlayerSdk", "❌ PLAYER ERROR", error)
+                android.util.Log.e("MtvVideoPlayerSdk", "Error code: ${error.errorCode}")
+                android.util.Log.e("MtvVideoPlayerSdk", "Error message: ${error.message}")
+                android.util.Log.e("MtvVideoPlayerSdk", "Cause: ${error.cause?.message}")
                 playerStateListener?.onPlayerError(error)
             }
 

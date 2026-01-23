@@ -18,6 +18,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.ima.ImaAdsLoader
@@ -59,9 +60,27 @@ object PlayerUtils {
     ): Pair<ExoPlayer, ImaAdsLoader?> {
 
         // ---------------------------------------------------------
-        // Resolve playable URI (online or offline)
+        // Resolve playable URI
+        // Prefer the explicit videoUrl passed from the caller.
+        // Fall back to internal resolver only if it's blank.
         // ---------------------------------------------------------
-        val resolvedUri = resolveToPlayableUri(context, contentList, selectedIndex)
+        val resolvedUri =
+          /*  if (videoUrl.isNotBlank() && videoUrl != "null") {
+                videoUrl.toUri()
+            } else {*/
+                resolveToPlayableUri(contentList, selectedIndex)
+        //    }
+
+        // ✅ DEBUG: Log URI resolution
+        Log.d("PlayerUtils", "=== PLAYER SETUP DEBUG ===")
+        Log.d("PlayerUtils", "videoUrl param: $videoUrl")
+        Log.d("PlayerUtils", "resolvedUri: $resolvedUri")
+        Log.d("PlayerUtils", "isDash: ${resolvedUri.toString().endsWith(".mpd", ignoreCase = true)}")
+        Log.d("PlayerUtils", "drmToken: ${if (drmToken.isNullOrBlank()) "null" else "present"}")
+        Log.d("PlayerUtils", "hasCacheFactory: ${contentList[selectedIndex].cacheFactory != null}")
+        Log.d("PlayerUtils", "content.drm: ${contentList[selectedIndex].drm}")
+        Log.d("PlayerUtils", "==========================")
+
         require(resolvedUri != Uri.EMPTY) { "No playable content available" }
         val isDash = resolvedUri.toString().endsWith(".mpd", ignoreCase = true)
 
@@ -101,7 +120,7 @@ object PlayerUtils {
                 ?: DefaultHttpDataSource.Factory()
 
         /* =========================================================
-           MEDIA SOURCE FACTORY (FIXED DRM)
+           MEDIA SOURCE FACTORY (FIXED DRM FOR OFFLINE)
            ========================================================= */
 
         val mediaSourceFactory =
@@ -110,16 +129,35 @@ object PlayerUtils {
                 .apply {
 
                     if (isDash && !drmToken.isNullOrBlank()) {
-                        val drmHttpFactory =
-                            DefaultHttpDataSource.Factory()
-                                .setAllowCrossProtocolRedirects(true)
+                        // ✅ CRITICAL: Use CacheDataSource for DRM license requests too.
+                        //    This allows offline playback using cached licenses.
+                        //    If cacheFactory is available (downloaded content), use it.
+                        //    Otherwise fall back to direct HTTP (online streaming).
+                        val drmDataSourceFactory: DataSource.Factory =
+                            contentList[selectedIndex].cacheFactory
+                                ?: DefaultHttpDataSource.Factory()
+                                    .setAllowCrossProtocolRedirects(true)
+
+                        Log.d("PlayerUtils", "DRM Setup: Using ${if (contentList[selectedIndex].cacheFactory != null) "CacheDataSource" else "DefaultHttpDataSource"} for license requests")
 
                         val drmProvider =
                             DefaultDrmSessionManagerProvider().apply {
-                                setDrmHttpDataSourceFactory(drmHttpFactory)
+                                setDrmHttpDataSourceFactory(
+                                    (drmDataSourceFactory as? DefaultHttpDataSource.Factory)
+                                        ?.apply {
+                                            setDefaultRequestProperties(
+                                                mapOf(
+                                                    "Authorization" to "Bearer $drmToken",
+                                                    "Content-Type" to "application/octet-stream"
+                                                )
+                                            )
+                                        }
+                                        ?: drmDataSourceFactory
+                                )
                             }
 
                         setDrmSessionManagerProvider(drmProvider)
+
 
                     }
 
@@ -161,20 +199,26 @@ object PlayerUtils {
                     }
                 )
 
-        // ✅ DASH DRM (ONLINE)
+        // ✅ DASH DRM (ONLINE & OFFLINE)
         if (isDash && !drmToken.isNullOrBlank()) {
-            mediaItemBuilder.setDrmConfiguration(
-                MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
-                    .setLicenseUri(drmToken.toUri())
-                    .setLicenseRequestHeaders(
-                        mapOf(
-                            "Content-Type" to "application/octet-stream"
-                            // Add Authorization header ONLY if your backend requires it
-                            // "Authorization" to "Bearer YOUR_TOKEN"
-                        )
-                    )
-                    .build()
-            )
+            // ✅ IMPORTANT: For offline playback, Media3 will use cached license from download.
+            //    The licenseUri must match EXACTLY what was used during download.
+            //    Headers are optional - only add if your license server requires them.
+            val licenseUrl = contentList[selectedIndex].drmToken
+            // ⬆️ this MUST be the same URL used during download
+
+            val drmConfigBuilder = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID).setLicenseUri(licenseUrl)
+            // Only add headers if they're actually needed (some servers require Content-Type)
+            // For offline playback, headers don't matter since cached license is used.
+            /*drmConfigBuilder.setLicenseRequestHeaders(
+                mapOf(
+                    "Content-Type" to "application/octet-stream"
+                )
+            )*/
+            val drmConfig = drmConfigBuilder.build()
+            mediaItemBuilder.setDrmConfiguration(drmConfig)
+
+            Log.d("PlayerUtils", "DRM Configuration set: licenseUri=${drmToken.take(50)}..., hasCacheFactory=${contentList[selectedIndex].cacheFactory != null}")
         }
 
         // Subtitles
@@ -212,59 +256,43 @@ object PlayerUtils {
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     fun resolveToPlayableUri(
-        context: Context,
         contentList: List<PlayerModel>,
         selectedIndex: Int = 0
     ): Uri {
         if (contentList.isEmpty()) return Uri.EMPTY
         val content = contentList[selectedIndex]
-        val hasInternet = isInternetAvailable(context)
+
         val mpd = content.mpdUrl
         val hls = content.hlsUrl
         val live = content.liveUrl
 
-        /* =========================================================
-           OFFLINE MODE → ONLY LOCAL FILE / CONTENT URI
-           ========================================================= */
-        if (!hasInternet) {
-            val localCandidate = if (content.drm == "1") {
-                mpd
-            } else {
-                hls ?: live ?: Uri.EMPTY
+        // Always resolve to the best available stream URL.
+        // Actual offline/online behavior is handled by the DataSource (CacheDataSource).
+        val primaryUrl = when {
+            // Prefer DASH for DRM content when provided
+            content.drm == "1" && !mpd.isNullOrBlank() -> mpd
+            !hls.isNullOrBlank() -> hls
+            !live.isNullOrBlank() -> live
+            !mpd.isNullOrBlank() -> mpd
+            else -> null
+        }?.trim()
+
+        if (primaryUrl.isNullOrBlank()) return Uri.EMPTY
+
+        return when {
+            primaryUrl.startsWith("content://") ||
+                    primaryUrl.startsWith("http://") ||
+                    primaryUrl.startsWith("https://") ||
+                    primaryUrl.startsWith("file://") -> {
+                primaryUrl.toUri()
             }
-            val candidate = localCandidate.toString()
 
-            return when {
-                candidate.startsWith("content://") ||
-                        candidate.startsWith("http://") ||
-                        candidate.startsWith("https://") ||
-                        candidate.startsWith("file://") -> {
-                    Uri.parse(candidate)
-                }
-
-                candidate.startsWith("/") -> {
-                    val file = File(candidate)
-                    if (file.exists()) Uri.fromFile(file) else Uri.EMPTY
-                }
-
-                else -> Uri.EMPTY
+            primaryUrl.startsWith("/") -> {
+                val file = File(primaryUrl)
+                if (file.exists()) Uri.fromFile(file) else Uri.EMPTY
             }
-        }
 
-        /* =========================================================
-           ONLINE MODE → REMOTE STREAM
-           ========================================================= */
-        val localCandidate = if (content.drm == "1") {
-            mpd
-        } else {
-            hls ?: live ?: Uri.EMPTY
-        }
-
-        val remoteUrl = localCandidate.toString()
-        return if (remoteUrl.isNotBlank()) {
-            Uri.parse(remoteUrl)
-        } else {
-            Uri.EMPTY
+            else -> primaryUrl.toUri()
         }
     }
 

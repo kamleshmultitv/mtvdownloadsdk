@@ -18,6 +18,9 @@ class AppClass : Application() {
                 .setUpstreamDataSourceFactory(
                     DownloadUtil.getHttpFactory(this)
                 )
-                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                // ✅ CRITICAL: No flags = serve from cache first, fallback to network only on cache miss.
+                //    FLAG_IGNORE_CACHE_ON_ERROR was causing network fallback even when cache had data,
+                //    which broke offline DRM playback. Without flags, cached licenses will be used offline.
+                .setFlags(0)
     }
 }

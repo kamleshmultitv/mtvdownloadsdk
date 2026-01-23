@@ -76,10 +76,10 @@ class DownloadWorker(
             val request = suspendCancellableCoroutine { continuation ->
 
                 val downloadHelper = DownloadHelper.forMediaItem(
-                    applicationContext,
-                    mediaItem,
-                    null, // default RenderersFactory
-                    dataSourceFactory
+                    /* context = */ applicationContext,
+                    /* mediaItem = */ mediaItem,
+                    /* renderersFactory = */ null, // Use default
+                    /* dataSourceFactory = */ dataSourceFactory
                 )
 
                 continuation.invokeOnCancellation {
@@ -92,15 +92,33 @@ class DownloadWorker(
                         helper: DownloadHelper,
                         tracksInfoAvailable: Boolean
                     ) {
-                        val downloadRequest =
-                            DownloadRequest.Builder(
-                                contentId,
-                                mediaItem.localConfiguration!!.uri
-                            )
-                                .setStreamKeys(streamKeys)
-                                .build()
+                        // ✅ Let DownloadHelper build the base DownloadRequest so that
+                        //    all manifest / DRM information is preserved correctly.
+                        //    For this Media3 version, the parameter is custom data (ByteArray?),
+                        //    so we pass null and then enforce our logical id (contentId) below.
+                        val baseRequest = helper.getDownloadRequest(/* data = */ null)
 
-                        continuation.resume(downloadRequest)
+                        // IMPORTANT:
+                        // - Room / UI use contentId as the primary key.
+                        // - Media3 DownloadManager must use the SAME id so that
+                        //   downloadIndex.getDownload(contentId) returns the active download.
+                        val builder = DownloadRequest.Builder(
+                            /* id = */ contentId,
+                            /* uri = */ baseRequest.uri
+                        )
+                            .setMimeType(baseRequest.mimeType)
+                            .setCustomCacheKey(baseRequest.customCacheKey)
+
+                        // Preserve or override stream keys
+                        if (streamKeys.isNotEmpty()) {
+                            builder.setStreamKeys(streamKeys)
+                        } else {
+                            builder.setStreamKeys(baseRequest.streamKeys)
+                        }
+
+                        val finalRequest = builder.build()
+
+                        continuation.resume(finalRequest)
                     }
 
                     override fun onPrepareError(

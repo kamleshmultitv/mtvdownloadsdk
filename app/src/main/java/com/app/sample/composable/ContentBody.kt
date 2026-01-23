@@ -25,6 +25,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.sample.AppClass
 import com.app.sample.R
 import com.app.sample.composable.download.DownloadPlayer
 import com.app.sample.composable.download.DownloadedContentList
@@ -34,6 +35,7 @@ import com.app.sample.utils.FileUtils.buildPlayerContentList
 import com.app.videosdk.listener.PipListener
 import com.app.videosdk.listener.PlayerStateListener
 import com.app.videosdk.ui.MtvVideoPlayerSdk
+import okhttp3.internal.platform.PlatformRegistry.applicationContext
 
 @Composable
 fun ContentBody(
@@ -46,12 +48,11 @@ fun ContentBody(
     onFullScreenChange: (Boolean) -> Unit,
     onOverrideContent: (OverrideContent?) -> Unit
 ) {
-
-    /* ---------------------------------------------------------
-     * ✅ STABLE CONTENT LIST
-     * Rebuild ONLY when overrideContent changes
-     * --------------------------------------------------------- */
-    val contentList = remember(overrideContent) {
+    // 🔥 IMPORTANT: no derivedStateOf here
+    val contentList = remember(
+        pagingItems.itemSnapshotList.items,
+        overrideContent
+    ) {
         buildPlayerContentList(
             context = context,
             pagingItems = pagingItems,
@@ -59,9 +60,6 @@ fun ContentBody(
         )
     }
 
-    /* ---------------------------------------------------------
-     * ✅ DOWNLOADED CONTENT STATE
-     * --------------------------------------------------------- */
     val downloadedContentList = remember {
         mutableStateListOf<DownloadedContentEntity>()
     }
@@ -69,76 +67,50 @@ fun ContentBody(
     var showDownloadedList by remember { mutableStateOf(false) }
     var selectedItem by remember { mutableStateOf<DownloadedContentEntity?>(null) }
 
-    /* ---------------------------------------------------------
-     * ✅ STABLE PLAYER KEY
-     * Player recreates ONLY when real playback content changes
-     * --------------------------------------------------------- */
-    val playerKey = remember(
-        overrideContent?.url,
-        overrideContent?.drmToken,
-        selectedIndex.intValue
-    ) {
-        "${overrideContent?.url ?: "list"}_${selectedIndex.intValue}"
-    }
-
-    /* ---------------------------------------------------------
-     * ✅ STABLE LISTENER (VERY IMPORTANT)
-     * --------------------------------------------------------- */
-    val playerStateListener = remember {
-        object : PlayerStateListener {
-
-            override fun onPlayerReady(durationMs: Long) {
-                Log.d("CLIENT", "Player ready: $durationMs")
-            }
-
-            override fun onPlayStateChanged(isPlaying: Boolean) {
-                Log.d("CLIENT", "Playing: $isPlaying")
-            }
-
-            override fun onPlaybackCompleted() {
-                Log.d("CLIENT", "Playback completed")
-            }
-
-            override fun onFullScreenChanged(isFullScreen: Boolean) {
-                Log.d("CLIENT", "Full screen: $isFullScreen")
-            }
-
-            override fun onAdStateChanged(isAdPlaying: Boolean) {
-                Log.d("CLIENT", "Ad playing = $isAdPlaying")
-            }
-        }
-    }
-
-    /* ---------------------------------------------------------
-     * ✅ UI
-     * --------------------------------------------------------- */
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorResource(R.color.black))
     ) {
-
         Column(modifier = Modifier.fillMaxSize()) {
 
-            /* ---------------------------------------------------------
-             * 🎬 VIDEO PLAYER (KEYED CORRECTLY)
-             * --------------------------------------------------------- */
-            key(playerKey) {
-                Log.d("PLAYER", "MtvVideoPlayerSdk COMPOSED")
-
+            // 🎬 SDK Video Player (KEYED)
+            key(
+                contentList,
+                selectedIndex.intValue
+            ) {
                 MtvVideoPlayerSdk(
                     contentList = contentList,
                     index = selectedIndex.intValue,
                     pipListener = pipListener,
-                    onPlayerBack = {},
+                    onPlayerBack = {  },
                     setFullScreen = onFullScreenChange,
-                    playerStateListener = playerStateListener
+                    playerStateListener = object : PlayerStateListener {
+
+                        override fun onPlayerReady(durationMs: Long) {
+                            Log.d("CLIENT", "Player ready: $durationMs")
+                        }
+
+                        override fun onPlayStateChanged(isPlaying: Boolean) {
+                            Log.d("CLIENT", "Playing: $isPlaying")
+                        }
+
+                        override fun onPlaybackCompleted() {
+                            Log.d("CLIENT", "Playback completed")
+                        }
+
+                        override fun onFullScreenChanged(isFullScreen: Boolean) {
+                            Log.d("CLIENT", "Full screen: $isFullScreen")
+                        }
+
+                        override fun onAdStateChanged(isAdPlaying: Boolean) {
+                            Log.d("CLIENT", "Ad playing = $isAdPlaying")
+                        }
+                    }
                 )
             }
 
-            /* ---------------------------------------------------------
-             * 📜 CONTENT LIST
-             * --------------------------------------------------------- */
+            // 📜 Content List
             ContentList(
                 pagingItems = pagingItems,
                 onItemClick = { index ->
@@ -152,16 +124,15 @@ fun ContentBody(
             )
         }
 
-        /* ---------------------------------------------------------
-         * ➕ FLOATING BUTTON (OVERRIDE CONTENT)
-         * --------------------------------------------------------- */
+        // ➕ Floating Action Button
         if (!isFullScreen) {
             FloatButton { config ->
 
                 if (config.url.isBlank()) {
+                    // ✅ APPLY CONFIG TO EXISTING API CONTENT
                     onOverrideContent(
                         OverrideContent(
-                            url = null,
+                            url = null,                 // 👈 IMPORTANT
                             drmToken = null,
                             isLive = false,
                             adsConfig = config.adsConfig,
@@ -170,6 +141,7 @@ fun ContentBody(
                         )
                     )
                 } else {
+                    // ✅ OVERRIDE CONTENT
                     selectedIndex.intValue = 0
                     onOverrideContent(
                         OverrideContent(
@@ -183,14 +155,14 @@ fun ContentBody(
                     )
                 }
             }
+
         }
 
-        /* ---------------------------------------------------------
-         * ⬇️ DOWNLOADED CONTENT FAB
-         * --------------------------------------------------------- */
         if (downloadedContentList.isNotEmpty()) {
             FloatingActionButton(
-                onClick = { showDownloadedList = true },
+                onClick = {
+                    showDownloadedList = true
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 32.dp, bottom = 160.dp),
@@ -198,6 +170,7 @@ fun ContentBody(
                 contentColor = colorResource(R.color.white),
                 shape = androidx.compose.foundation.shape.CircleShape
             ) {
+                // ✅ FAB content (ICON / TEXT REQUIRED)
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Downloads"
@@ -205,32 +178,21 @@ fun ContentBody(
             }
         }
 
-        /* ---------------------------------------------------------
-         * 📂 DOWNLOADED LIST
-         * --------------------------------------------------------- */
         if (showDownloadedList) {
-            DownloadedContentList(
-                downloadContentList = downloadedContentList,
+            DownloadedContentList(downloadContentList = downloadedContentList,
                 onItemClick = { item ->
                     selectedItem = item
                 },
                 onBackClick = {
                     showDownloadedList = false
-                }
-            )
+                })
         }
 
-        /* ---------------------------------------------------------
-         * ▶️ DOWNLOAD PLAYER
-         * --------------------------------------------------------- */
         selectedItem?.let { item ->
-            DownloadPlayer(
-                item,
+            DownloadPlayer(item,
                 onBack = {
                     selectedItem = null
-                }
-            )
+                })
         }
     }
 }
-

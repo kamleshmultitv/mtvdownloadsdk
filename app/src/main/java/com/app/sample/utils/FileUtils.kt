@@ -1,6 +1,7 @@
 package com.app.sample.utils
 
 import android.content.Context
+import android.text.TextUtils
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.paging.compose.LazyPagingItems
@@ -13,6 +14,7 @@ import com.app.sample.extra.ApiConstant.PAID
 import com.app.sample.extra.ApiConstant.TOKEN
 import com.app.sample.model.ContentItem
 import com.app.sample.model.OverrideContent
+import com.app.sample.utils.FileUtils.getSecondFromDays
 import com.app.videosdk.model.AdsConfig
 import com.app.videosdk.model.NextEpisode
 import com.app.videosdk.model.PlayerModel
@@ -26,15 +28,20 @@ object FileUtils {
     /* DRM TOKEN                           */
     /* ---------------------------------- */
 
-    private fun getSecondFromDays(downloadDays: String?): Int {
-        return downloadDays
-            ?.takeIf { it != "0" }
-            ?.toIntOrNull()
-            ?.times(24 * 60 * 60)
-            ?: 0
+
+    fun getSecondFromDays(downloadDays: String?): Int {
+        if (downloadDays != null && !TextUtils.isEmpty(downloadDays) && !downloadDays.equals(
+                "0",
+                ignoreCase = true
+            )
+        ) {
+            return downloadDays.toInt() * 24 * 60 * 60
+        } else {
+            return 0
+        }
     }
 
-    fun getDrmToken(context: Context, contentItems: ContentItem?): String {
+    /*fun getDrmToken(context: Context, contentItems: ContentItem?): String {
         val accessType = if (contentItems?.accessType == PAID) "1" else "0"
 
         val downloadExpiry =
@@ -61,6 +68,38 @@ object FileUtils {
                 "&type=$DRM_TYPE" +
                 "&authorization=$TOKEN" +
                 "&payload=${ApiEncryptionHelper.convertStringToBase64(payload.toString())}"
+    }*/
+
+
+    private fun getDrmToken(context: Context, contentItems: ContentItem?): String {
+        var accessType = contentItems?.accessType
+        accessType = if (accessType.equals(PAID)) "1"
+        else "0"
+        val downloadExpiry = if (getSecondFromDays(contentItems?.downloadExpiry) == 0) {
+            getSecondFromDays("30")
+        } else {
+            getSecondFromDays(contentItems?.downloadExpiry)
+        }
+
+        val jsonObject = JSONObject()
+        jsonObject.put("content_id", "" + contentItems?.id)
+        jsonObject.put("k_id", "" + contentItems?.kId)
+        jsonObject.put("user_id", "943592")
+        jsonObject.put("package_id", "2")
+        jsonObject.put("licence_duration", "" + downloadExpiry)
+        jsonObject.put("security_level", "0")
+        jsonObject.put("rental_duration", "0")
+        jsonObject.put("content_type", accessType)
+        jsonObject.put("download", "1")
+        jsonObject.put("can_renew", true)
+        val androidDeviceUniqueId = GUIDGenerator.generateGUID(context)
+        val drmToken =
+            DRM_LICENSE_URL + "" + "user_id=" + androidDeviceUniqueId + "&type=" + DRM_TYPE + "&" + "authorization=" +
+                TOKEN + "&payload=" + ApiEncryptionHelper.convertStringToBase64(
+                jsonObject.toString()
+            )
+
+        return drmToken
     }
 
     @OptIn(UnstableApi::class)
@@ -69,6 +108,10 @@ object FileUtils {
     ): List<PlayerModel> {
 
         val cacheFactory = (applicationContext as AppClass).cacheDataSourceFactory
+        
+        // ✅ Determine if content is DRM: if licenseUri exists, it's DRM content
+        val isDrm = !downloadedContentEntity.licenseUri.isNullOrBlank()
+        
         return listOf(
             PlayerModel(
                 // ▶️ Playback URL
@@ -76,6 +119,7 @@ object FileUtils {
                 mpdUrl = downloadedContentEntity.contentUrl,
 
                 // 🔐 DRM
+                drm = if (isDrm) "1" else "0",
                 drmToken = downloadedContentEntity.licenseUri,
 
                 // 🖼️ Artwork
