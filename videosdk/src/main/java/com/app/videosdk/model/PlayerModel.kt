@@ -1,8 +1,12 @@
 package com.app.videosdk.model
 
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.offline.DownloadManager
+import okhttp3.Cache
 
 data class PlayerModel(
+    val id: String? = null,
     val hlsUrl: String? = null,
     val mpdUrl: String? = null,
     val liveUrl: String? = null,
@@ -22,5 +26,7 @@ data class PlayerModel(
     val adsConfig: AdsConfig? = null,
     val skipIntro: SkipIntro? = null,
     val nextEpisode: NextEpisode? = null,
-    val cacheFactory: CacheDataSource.Factory? = null
+    val cacheFactory: CacheDataSource.Factory? = null,
+    val downloadManager: DownloadManager? = null,
+    val downloadCache: SimpleCache? = null
 )

@@ -3,8 +3,6 @@ package com.app.videosdk.utils
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
@@ -14,6 +12,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -21,7 +20,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
+import androidx.media3.exoplayer.hls.SampleQueueMappingException
 import androidx.media3.exoplayer.ima.ImaAdsLoader
+import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.TrackGroupArray
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -35,7 +36,6 @@ import com.app.videosdk.model.VideoQualityModel
 import com.google.ads.interactivemedia.v3.api.AdEvent
 import com.google.common.collect.ImmutableList
 import com.google.gson.Gson
-import java.io.File
 import kotlin.math.pow
 
 object PlayerUtils {
@@ -43,7 +43,6 @@ object PlayerUtils {
     /* =========================================================
        PLAYER + IMA
        ========================================================= */
-
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     @OptIn(UnstableApi::class)
     fun createPlayer(
@@ -59,34 +58,26 @@ object PlayerUtils {
         existingAdsLoader: ImaAdsLoader? = null
     ): Pair<ExoPlayer, ImaAdsLoader?> {
 
-        // ---------------------------------------------------------
-        // Resolve playable URI
-        // Prefer the explicit videoUrl passed from the caller.
-        // Fall back to internal resolver only if it's blank.
-        // ---------------------------------------------------------
+        val content = contentList[selectedIndex]
+        val contentId = content.id
+
+        val download =
+            content.downloadManager
+                ?.downloadIndex
+                ?.getDownload(contentId.toString())
+
+        val isOffline = download?.state == Download.STATE_COMPLETED
+
+        Log.d(
+            "PlayerUtils",
+            "isOffline=$isOffline, contentId=$contentId, downloadExists=${download != null}"
+        )
+
         val resolvedUri =
-          /*  if (videoUrl.isNotBlank() && videoUrl != "null") {
-                videoUrl.toUri()
-            } else {*/
-                resolveToPlayableUri(contentList, selectedIndex)
-        //    }
+            if (isOffline) Uri.EMPTY
+            else resolveToPlayableUri(contentList, selectedIndex)
 
-        // ✅ DEBUG: Log URI resolution
-        Log.d("PlayerUtils", "=== PLAYER SETUP DEBUG ===")
-        Log.d("PlayerUtils", "videoUrl param: $videoUrl")
-        Log.d("PlayerUtils", "resolvedUri: $resolvedUri")
-        Log.d("PlayerUtils", "isDash: ${resolvedUri.toString().endsWith(".mpd", ignoreCase = true)}")
-        Log.d("PlayerUtils", "drmToken: ${if (drmToken.isNullOrBlank()) "null" else "present"}")
-        Log.d("PlayerUtils", "hasCacheFactory: ${contentList[selectedIndex].cacheFactory != null}")
-        Log.d("PlayerUtils", "content.drm: ${contentList[selectedIndex].drm}")
-        Log.d("PlayerUtils", "==========================")
-
-        require(resolvedUri != Uri.EMPTY) { "No playable content available" }
-        val isDash = resolvedUri.toString().endsWith(".mpd", ignoreCase = true)
-
-        /* =========================================================
-           ADS LOADER
-           ========================================================= */
+        /* ================= ADS ================= */
 
         val adsLoader =
             existingAdsLoader
@@ -111,56 +102,36 @@ object PlayerUtils {
                         .build()
                 } else null
 
-        /* =========================================================
-           DATA SOURCE FACTORY
-           ========================================================= */
+        /* ================= DATASOURCE ================= */
+
+        val cache = content.downloadCache
 
         val dataSourceFactory: DataSource.Factory =
-            contentList[selectedIndex].cacheFactory
-                ?: DefaultHttpDataSource.Factory()
+            if (cache != null) {
+                CacheDataSource.Factory()
+                    .setCache(cache)
+                    .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory())
+                    .setCacheWriteDataSinkFactory(null)
+                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            } else {
+                DefaultHttpDataSource.Factory()
+            }
 
-        /* =========================================================
-           MEDIA SOURCE FACTORY (FIXED DRM FOR OFFLINE)
-           ========================================================= */
+        /* ================= MEDIA SOURCE ================= */
 
         val mediaSourceFactory =
             DefaultMediaSourceFactory(context)
                 .setDataSourceFactory(dataSourceFactory)
                 .apply {
-
-                    if (isDash && !drmToken.isNullOrBlank()) {
-                        // ✅ CRITICAL: Use CacheDataSource for DRM license requests too.
-                        //    This allows offline playback using cached licenses.
-                        //    If cacheFactory is available (downloaded content), use it.
-                        //    Otherwise fall back to direct HTTP (online streaming).
-                        val drmDataSourceFactory: DataSource.Factory =
-                            contentList[selectedIndex].cacheFactory
-                                ?: DefaultHttpDataSource.Factory()
-                                    .setAllowCrossProtocolRedirects(true)
-
-                        Log.d("PlayerUtils", "DRM Setup: Using ${if (contentList[selectedIndex].cacheFactory != null) "CacheDataSource" else "DefaultHttpDataSource"} for license requests")
-
-                        val drmProvider =
+                    if (!drmToken.isNullOrBlank()) {
+                        setDrmSessionManagerProvider(
                             DefaultDrmSessionManagerProvider().apply {
                                 setDrmHttpDataSourceFactory(
-                                    (drmDataSourceFactory as? DefaultHttpDataSource.Factory)
-                                        ?.apply {
-                                            setDefaultRequestProperties(
-                                                mapOf(
-                                                    "Authorization" to "Bearer $drmToken",
-                                                    "Content-Type" to "application/octet-stream"
-                                                )
-                                            )
-                                        }
-                                        ?: drmDataSourceFactory
+                                    DefaultHttpDataSource.Factory()
                                 )
                             }
-
-                        setDrmSessionManagerProvider(drmProvider)
-
-
+                        )
                     }
-
 
                     adsLoader?.let { loader ->
                         setAdsLoaderProvider { loader }
@@ -170,88 +141,151 @@ object PlayerUtils {
                     }
                 }
 
-        /* =========================================================
-           PLAYER
-           ========================================================= */
+        /* ================= PLAYER ================= */
 
         val exoPlayer =
             ExoPlayer.Builder(context)
                 .setMediaSourceFactory(mediaSourceFactory)
                 .build()
-                .apply {
-                    videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT
-                    repeatMode = Player.REPEAT_MODE_OFF
+
+        /* ================= ERROR LOGGING ================= */
+
+        exoPlayer.addListener(object : Player.Listener {
+
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e("PlayerUtils", "Playback error", error)
+
+                Log.e("DRM_DEBUG", "errorCode=${error.errorCodeName}")
+                Log.e("DRM_DEBUG", "message=${error.message}")
+                Log.e("DRM_DEBUG", "cause=${error.cause?.javaClass?.simpleName}")
+
+                when (error.errorCode) {
+                    PlaybackException.ERROR_CODE_DRM_CONTENT_ERROR ->
+                        Log.e("DRM_DEBUG", "❌ Offline DRM license NOT FOUND")
+
+                    PlaybackException.ERROR_CODE_DRM_LICENSE_EXPIRED ->
+                        Log.e("DRM_DEBUG", "❌ Offline DRM license EXPIRED")
+
+                    PlaybackException.ERROR_CODE_DRM_PROVISIONING_FAILED ->
+                        Log.e("DRM_DEBUG", "❌ Widevine provisioning failed")
+
+                    else -> Unit
                 }
 
-        /* =========================================================
-           MEDIA ITEM
-           ========================================================= */
+                // Existing audio fallback (unchanged)
+                if (
+                    error.cause is SampleQueueMappingException ||
+                    error.message?.contains("audio/mp4a-latm") == true
+                ) {
+                    Log.w("PlayerUtils", "Audio broken → falling back to video-only")
 
-        val mediaItemBuilder =
-            MediaItem.Builder()
-                .setUri(resolvedUri)
-                .setMimeType(
-                    when {
-                        resolvedUri.toString().endsWith(".mpd", true) -> MimeTypes.APPLICATION_MPD
-                        resolvedUri.toString().endsWith(".m3u8", true) -> MimeTypes.APPLICATION_M3U8
-                        resolvedUri.toString().endsWith(".mp4", true) -> MimeTypes.VIDEO_MP4
-                        else -> null
+                    exoPlayer.trackSelectionParameters =
+                        exoPlayer.trackSelectionParameters
+                            .buildUpon()
+                            .setDisabledTrackTypes(setOf(C.TRACK_TYPE_AUDIO))
+                            .build()
+
+                    exoPlayer.prepare()
+                    exoPlayer.playWhenReady = true
+                }
+            }
+        })
+
+        /* ================= MEDIA ITEM ================= */
+
+        val mediaItem: MediaItem =
+            if (isOffline) {
+                Log.d("PlayerUtils", "Using OFFLINE MediaItem")
+
+                val isDashOffline =
+                    download.request.uri.toString()
+                        .substringBefore("?")
+                        .endsWith(".mpd", ignoreCase = true)
+
+                if (isDashOffline) {
+                    // Try offline DRM → fallback to online
+                    buildOfflineDrmMediaItemOrNull(download)
+                        ?: run {
+                            Log.w(
+                                "PlayerUtils",
+                                "Offline DASH without license → fallback to online"
+                            )
+                            MediaItem.fromUri(resolvedUri)
+                        }
+                } else {
+                    // HLS or non-DRM offline
+                    download.request.toMediaItem()
+                }
+            } else {
+                Log.d("PlayerUtils", "Using ONLINE MediaItem: $resolvedUri")
+
+                MediaItem.Builder()
+                    .setUri(resolvedUri)
+                    .apply {
+                        if (!drmToken.isNullOrBlank()) {
+                            setDrmConfiguration(
+                                MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                                    .setLicenseUri(drmToken)
+                                    .setMultiSession(true)
+                                    .build()
+                            )
+                        }
+
+                        if (!srt.isNullOrBlank()) {
+                            setSubtitleConfigurations(
+                                ImmutableList.of(initializeSubTitleTracker(srt))
+                            )
+                        }
+
+                        if (
+                            adsLoader != null &&
+                            adsConfig?.enableAds == true &&
+                            !adsConfig.adTagUrl.isNullOrBlank()
+                        ) {
+                            setAdsConfiguration(
+                                MediaItem.AdsConfiguration.Builder(
+                                    adsConfig.adTagUrl.trim().toUri()
+                                ).build()
+                            )
+                            adsLoader.setPlayer(exoPlayer)
+                        }
                     }
-                )
+                    .build()
+            }
 
-        // ✅ DASH DRM (ONLINE & OFFLINE)
-        if (isDash && !drmToken.isNullOrBlank()) {
-            // ✅ IMPORTANT: For offline playback, Media3 will use cached license from download.
-            //    The licenseUri must match EXACTLY what was used during download.
-            //    Headers are optional - only add if your license server requires them.
-            val licenseUrl = contentList[selectedIndex].drmToken
-            // ⬆️ this MUST be the same URL used during download
 
-            val drmConfigBuilder = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID).setLicenseUri(licenseUrl)
-            // Only add headers if they're actually needed (some servers require Content-Type)
-            // For offline playback, headers don't matter since cached license is used.
-            /*drmConfigBuilder.setLicenseRequestHeaders(
-                mapOf(
-                    "Content-Type" to "application/octet-stream"
-                )
-            )*/
-            val drmConfig = drmConfigBuilder.build()
-            mediaItemBuilder.setDrmConfiguration(drmConfig)
-
-            Log.d("PlayerUtils", "DRM Configuration set: licenseUri=${drmToken.take(50)}..., hasCacheFactory=${contentList[selectedIndex].cacheFactory != null}")
-        }
-
-        // Subtitles
-        if (!srt.isNullOrBlank()) {
-            mediaItemBuilder.setSubtitleConfigurations(
-                ImmutableList.of(initializeSubTitleTracker(srt))
-            )
-        }
-
-        // Ads
-        if (
-            adsLoader != null &&
-            adsConfig?.enableAds == true &&
-            !adsConfig.adTagUrl.isNullOrBlank()
-        ) {
-            mediaItemBuilder.setAdsConfiguration(
-                MediaItem.AdsConfiguration.Builder(
-                    adsConfig.adTagUrl.trim().toUri()
-                ).build()
-            )
-            adsLoader.setPlayer(exoPlayer)
-        }
-
-        /* =========================================================
-           PREPARE & PLAY
-           ========================================================= */
-
-        exoPlayer.setMediaItem(mediaItemBuilder.build())
+        exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
 
         return exoPlayer to adsLoader
     }
+
+    @OptIn(UnstableApi::class)
+    private fun buildOfflineDrmMediaItemOrNull(
+        download: Download
+    ): MediaItem? {
+
+        val keySetId = download.request.keySetId
+        if (keySetId == null) {
+            Log.e(
+                "DRM_DEBUG",
+                "❌ Offline DASH but keySetId missing — falling back to online"
+            )
+            return null
+        }
+
+        return download.request
+            .toMediaItem()
+            .buildUpon()
+            .setDrmConfiguration(
+                MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                    .setKeySetId(keySetId)
+                    .build()
+            )
+            .build()
+    }
+
 
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
@@ -260,50 +294,27 @@ object PlayerUtils {
         selectedIndex: Int = 0
     ): Uri {
         if (contentList.isEmpty()) return Uri.EMPTY
+
         val content = contentList[selectedIndex]
 
         val mpd = content.mpdUrl
         val hls = content.hlsUrl
         val live = content.liveUrl
 
-        // Always resolve to the best available stream URL.
-        // Actual offline/online behavior is handled by the DataSource (CacheDataSource).
+        // ✅ STRICT RULE
+        // DRM → DASH ONLY
+        // NON-DRM → HLS
         val primaryUrl = when {
-            // Prefer DASH for DRM content when provided
-            content.drm == "1" && !mpd.isNullOrBlank() -> mpd
-            !hls.isNullOrBlank() -> hls
+            content.drm == "1" && !mpd.isNullOrBlank() -> mpd   // ✅ FIX
+            content.drm != "1" && !hls.isNullOrBlank() -> hls
             !live.isNullOrBlank() -> live
-            !mpd.isNullOrBlank() -> mpd
             else -> null
         }?.trim()
 
         if (primaryUrl.isNullOrBlank()) return Uri.EMPTY
 
-        return when {
-            primaryUrl.startsWith("content://") ||
-                    primaryUrl.startsWith("http://") ||
-                    primaryUrl.startsWith("https://") ||
-                    primaryUrl.startsWith("file://") -> {
-                primaryUrl.toUri()
-            }
-
-            primaryUrl.startsWith("/") -> {
-                val file = File(primaryUrl)
-                if (file.exists()) Uri.fromFile(file) else Uri.EMPTY
-            }
-
-            else -> primaryUrl.toUri()
-        }
+        return primaryUrl.toUri()
     }
-
-    @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
-    fun isInternetAvailable(context: Context): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return false
-        val capabilities = cm.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
-
 
     private fun initializeSubTitleTracker(srt: String): MediaItem.SubtitleConfiguration {
         return MediaItem.SubtitleConfiguration.Builder(srt.toUri())

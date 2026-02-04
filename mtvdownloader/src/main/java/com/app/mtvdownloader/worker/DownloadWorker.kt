@@ -47,9 +47,21 @@ class DownloadWorker(
 
     override suspend fun doWork(): Result {
 
-        val contentUri = inputData.getString(KEY_CONTENT_URI) ?: return Result.failure()
-        val contentId = inputData.getString(KEY_CONTENT_ID) ?: return Result.failure()
+        Log.d(TAG, "Worker started")
+
+        val contentUri = inputData.getString(KEY_CONTENT_URI)
+        val contentId = inputData.getString(KEY_CONTENT_ID)
         val drmLicenseUri = inputData.getString(KEY_DRM_LICENSE_URI)
+
+        Log.d(
+            TAG,
+            "InputData contentId=$contentId uri=$contentUri drmLicense=$drmLicenseUri"
+        )
+
+        if (contentUri == null || contentId == null) {
+            Log.e(TAG, "Missing input data")
+            return Result.failure()
+        }
 
         val streamKeyString = inputData.getString(KEY_STREAM_KEYS)
         val streamKeys: List<StreamKey> =
@@ -58,17 +70,19 @@ class DownloadWorker(
         val downloadManager = DownloadUtil.getDownloadManager(applicationContext)
         val dataSourceFactory = DownloadUtil.getHttpFactory(applicationContext)
 
-        // ✅ DRM handled via MediaItem (Media3 correct approach)
         val mediaItem = if (!drmLicenseUri.isNullOrEmpty()) {
+            Log.d(TAG, "Creating DRM MediaItem")
             MediaItem.Builder()
                 .setUri(contentUri)
                 .setDrmConfiguration(
                     MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
                         .setLicenseUri(drmLicenseUri)
+                        .setMultiSession(true)
                         .build()
                 )
                 .build()
         } else {
+            Log.d(TAG, "Creating non-DRM MediaItem")
             MediaItem.fromUri(contentUri)
         }
 
@@ -76,13 +90,14 @@ class DownloadWorker(
             val request = suspendCancellableCoroutine { continuation ->
 
                 val downloadHelper = DownloadHelper.forMediaItem(
-                    /* context = */ applicationContext,
-                    /* mediaItem = */ mediaItem,
-                    /* renderersFactory = */ null, // Use default
-                    /* dataSourceFactory = */ dataSourceFactory
+                    applicationContext,
+                    mediaItem,
+                    null,
+                    dataSourceFactory
                 )
 
                 continuation.invokeOnCancellation {
+                    Log.d(TAG, "DownloadHelper cancelled")
                     downloadHelper.release()
                 }
 
@@ -92,24 +107,26 @@ class DownloadWorker(
                         helper: DownloadHelper,
                         tracksInfoAvailable: Boolean
                     ) {
-                        // ✅ Let DownloadHelper build the base DownloadRequest so that
-                        //    all manifest / DRM information is preserved correctly.
-                        //    For this Media3 version, the parameter is custom data (ByteArray?),
-                        //    so we pass null and then enforce our logical id (contentId) below.
-                        val baseRequest = helper.getDownloadRequest(/* data = */ null)
+                        Log.d(
+                            TAG,
+                            "DownloadHelper prepared | tracksAvailable=$tracksInfoAvailable"
+                        )
 
-                        // IMPORTANT:
-                        // - Room / UI use contentId as the primary key.
-                        // - Media3 DownloadManager must use the SAME id so that
-                        //   downloadIndex.getDownload(contentId) returns the active download.
+                        val baseRequest = helper.getDownloadRequest(null)
+
+                        Log.d(
+                            TAG,
+                            "BaseRequest uri=${baseRequest.uri} " +
+                                    "streamKeys=${baseRequest.streamKeys.size}"
+                        )
+
                         val builder = DownloadRequest.Builder(
-                            /* id = */ contentId,
-                            /* uri = */ baseRequest.uri
+                            contentId,
+                            baseRequest.uri
                         )
                             .setMimeType(baseRequest.mimeType)
                             .setCustomCacheKey(baseRequest.customCacheKey)
 
-                        // Preserve or override stream keys
                         if (streamKeys.isNotEmpty()) {
                             builder.setStreamKeys(streamKeys)
                         } else {
@@ -118,6 +135,11 @@ class DownloadWorker(
 
                         val finalRequest = builder.build()
 
+                        Log.d(
+                            TAG,
+                            "Final DownloadRequest built | id=${finalRequest.id}"
+                        )
+
                         continuation.resume(finalRequest)
                     }
 
@@ -125,7 +147,7 @@ class DownloadWorker(
                         helper: DownloadHelper,
                         e: IOException
                     ) {
-                        Log.e(TAG, "Failed to prepare download", e)
+                        Log.e(TAG, "DownloadHelper prepare failed", e)
                         if (continuation.isActive) {
                             continuation.resumeWithException(e)
                         }
@@ -133,6 +155,7 @@ class DownloadWorker(
                 })
             }
 
+            Log.d(TAG, "Adding download to DownloadManager | id=${request.id}")
             downloadManager.addDownload(request)
             downloadManager.resumeDownloads()
 
@@ -148,20 +171,33 @@ class DownloadWorker(
 
             val download = try {
                 downloadManager.downloadIndex.getDownload(contentId)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.e(TAG, "DownloadIndex error", e)
                 null
             }
 
             if (download == null) {
+                Log.d(TAG, "Download not yet available in index")
                 delay(500)
                 continue
             }
 
-            when (download.state) {
 
-                STATE_QUEUED -> {
-                    // already handled
-                }
+            Log.d(
+                TAG,
+                "Download state=${download.state} " +
+                        "bytes=${download.bytesDownloaded}/${download.contentLength} " +
+                        "percent=${download.percentDownloaded}"
+            )
+
+            if (download.request.keySetId != null) {
+                Log.d(
+                    TAG,
+                    "Worker sees keySetId size=${download.request.keySetId!!.size}"
+                )
+            }
+
+            when (download.state) {
 
                 STATE_DOWNLOADING -> {
 
@@ -173,7 +209,6 @@ class DownloadWorker(
                     if (lastStatus != DOWNLOAD_STATUS_DOWNLOADING ||
                         progress != lastProgress
                     ) {
-
                         withContext(Dispatchers.IO) {
                             dao.updateProgressAndStatus(
                                 contentId,
@@ -200,6 +235,7 @@ class DownloadWorker(
                 }
 
                 STATE_COMPLETED -> {
+                    Log.d(TAG, "Download completed")
 
                     withContext(Dispatchers.IO) {
                         dao.updateProgressAndStatus(
@@ -210,11 +246,11 @@ class DownloadWorker(
                             DownloadUtil.getDownloadPath(contentId)
                         )
                     }
-
                     return Result.success()
                 }
 
                 STATE_FAILED -> {
+                    Log.e(TAG, "Download failed")
 
                     withContext(Dispatchers.IO) {
                         dao.updateStatus(
@@ -222,12 +258,6 @@ class DownloadWorker(
                             DOWNLOAD_STATUS_FAILED
                         )
                     }
-
-                    return Result.failure()
-                }
-
-                else -> {
-                    // Stop worker for unhandled states
                     return Result.failure()
                 }
             }
@@ -235,6 +265,7 @@ class DownloadWorker(
             delay(1000)
         }
 
+        Log.e(TAG, "Worker cancelled")
         return Result.failure()
     }
 }

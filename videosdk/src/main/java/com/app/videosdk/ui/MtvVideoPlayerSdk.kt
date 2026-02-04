@@ -33,7 +33,9 @@ import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.ui.PlayerView
@@ -227,6 +229,7 @@ fun MtvVideoPlayerSdk(
                     }
 
                     Player.STATE_READY -> {
+                        isLoading = false
                         val d = player.duration
                         if (d > 0) {
                             contentDuration = d
@@ -235,9 +238,16 @@ fun MtvVideoPlayerSdk(
                         playerStateListener?.onBuffering(false)
                         val duration = player.duration.takeIf { it > 0 } ?: 0L
                         playerStateListener?.onPlayerReady(duration)
+
+                        exoPlayer.trackSelectionParameters =
+                            exoPlayer.trackSelectionParameters
+                                .buildUpon()
+                                .setForceHighestSupportedBitrate(false)
+                                .build()
                     }
 
                     Player.STATE_ENDED -> {
+                        isLoading = false
                         val total = contentList?.size ?: 0
                         val nextIndex = selectedIndex.intValue + 1
                         if (nextIndex < total) {
@@ -248,6 +258,21 @@ fun MtvVideoPlayerSdk(
                     }
                 }
             }
+
+                override fun onTracksChanged(tracks: Tracks) {
+                    tracks.groups.forEach { group ->
+                        Log.d("TRACK", "TrackGroup type=${group.type}")
+                        for (i in 0 until group.mediaTrackGroup.length) {
+                            val format = group.mediaTrackGroup.getFormat(i)
+                            Log.d(
+                                "TRACK",
+                                "  mime=${format.sampleMimeType}, codecs=${format.codecs}"
+                            )
+                        }
+                    }
+                }
+
+
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 playerStateListener?.onPlayStateChanged(isPlaying)

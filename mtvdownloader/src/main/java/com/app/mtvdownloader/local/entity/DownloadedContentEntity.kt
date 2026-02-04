@@ -19,5 +19,6 @@ data class DownloadedContentEntity(
     val downloadedAt: Long? = null,
     val streamKeys: String? = null,
     val videoHeight: Int? = null,
-    val videoBitrate: Int? = null
+    val videoBitrate: Int? = null,
+    val drmKeySetId: String? = null
 )

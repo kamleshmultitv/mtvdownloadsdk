@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-   // id("maven-publish")
+  //  id("maven-publish")
 }
 
 android {
@@ -49,11 +49,11 @@ android {
     }
 
     // ✅ REQUIRED for AGP 8+ + JitPack
-    publishing {
+  /*  publishing {
         singleVariant("release") {
             withSourcesJar()
         }
-    }
+    }*/
 }
 
 /**

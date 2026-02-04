@@ -9,7 +9,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.app.sample"
+        applicationId = "com.aol.sspt"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -137,6 +137,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation("androidx.media3:media3-datasource:1.2.1")
+    implementation(libs.androidx.media3.exoplayer)
 
     // SDK
      implementation(project(":videosdk"))

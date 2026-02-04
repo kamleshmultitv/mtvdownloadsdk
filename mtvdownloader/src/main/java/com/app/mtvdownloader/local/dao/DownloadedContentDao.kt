@@ -10,13 +10,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface DownloadedContentDao {
 
-
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(content: DownloadedContentEntity)
 
     @Query("DELETE FROM downloaded_content WHERE contentId = :contentId")
     suspend fun deleteByContentId(contentId: String)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(content: DownloadedContentEntity)
 
     @Query("SELECT * FROM downloaded_content WHERE contentId = :contentId")
     fun getDownloadedContent(contentId: String): Flow<DownloadedContentEntity?>
@@ -38,7 +36,7 @@ interface DownloadedContentDao {
             downloadedAt = COALESCE(:downloadedAt, downloadedAt),
             localFilePath = COALESCE(:localFilePath, localFilePath)
         WHERE contentId = :contentId
-    """
+        """
     )
     suspend fun updateProgressAndStatus(
         contentId: String,
@@ -53,7 +51,7 @@ interface DownloadedContentDao {
         UPDATE downloaded_content
         SET downloadStatus = :status
         WHERE contentId = :contentId
-    """
+        """
     )
     suspend fun updateStatus(
         contentId: String,
@@ -65,20 +63,42 @@ interface DownloadedContentDao {
 
     @Query(
         """
-SELECT COUNT(*) FROM downloaded_content
-WHERE downloadStatus = :downloading
-"""
+        SELECT COUNT(*) FROM downloaded_content
+        WHERE downloadStatus = :downloading
+        """
     )
     suspend fun hasActiveDownload(downloading: String): Int
 
     @Query(
         """
-    SELECT * FROM downloaded_content
-    WHERE downloadStatus = :status
-    ORDER BY downloadedAt ASC
-    LIMIT 1
-    """
+        SELECT * FROM downloaded_content
+        WHERE downloadStatus = :status
+        ORDER BY downloadedAt ASC
+        LIMIT 1
+        """
     )
     suspend fun getNextQueuedContent(status: String): DownloadedContentEntity?
 
+    // Get DRM keySetId (as ByteArray? if stored as BLOB)
+    @Query(
+        """
+        SELECT drmKeySetId FROM downloaded_content
+        WHERE contentId = :contentId
+        LIMIT 1
+        """
+    )
+    suspend fun getDrmKeySetId(contentId: String): ByteArray?
+
+    // Update DRM keySetId
+    @Query(
+        """
+        UPDATE downloaded_content
+        SET drmKeySetId = :keySetId
+        WHERE contentId = :contentId
+        """
+    )
+    suspend fun updateDrmKeySetId(
+        contentId: String,
+        keySetId: ByteArray?
+    )
 }

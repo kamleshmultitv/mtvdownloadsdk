@@ -2,6 +2,7 @@ package com.app.sample.utils
 
 import android.content.Context
 import android.text.TextUtils
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.paging.compose.LazyPagingItems
@@ -14,7 +15,6 @@ import com.app.sample.extra.ApiConstant.PAID
 import com.app.sample.extra.ApiConstant.TOKEN
 import com.app.sample.model.ContentItem
 import com.app.sample.model.OverrideContent
-import com.app.sample.utils.FileUtils.getSecondFromDays
 import com.app.videosdk.model.AdsConfig
 import com.app.videosdk.model.NextEpisode
 import com.app.videosdk.model.PlayerModel
@@ -28,48 +28,17 @@ object FileUtils {
     /* DRM TOKEN                           */
     /* ---------------------------------- */
 
-
     fun getSecondFromDays(downloadDays: String?): Int {
-        if (downloadDays != null && !TextUtils.isEmpty(downloadDays) && !downloadDays.equals(
+        return if (downloadDays != null && !TextUtils.isEmpty(downloadDays) && !downloadDays.equals(
                 "0",
                 ignoreCase = true
             )
         ) {
-            return downloadDays.toInt() * 24 * 60 * 60
+            downloadDays.toInt() * 24 * 60 * 60
         } else {
-            return 0
+            0
         }
     }
-
-    /*fun getDrmToken(context: Context, contentItems: ContentItem?): String {
-        val accessType = if (contentItems?.accessType == PAID) "1" else "0"
-
-        val downloadExpiry =
-            getSecondFromDays(contentItems?.downloadExpiry)
-                .takeIf { it > 0 }
-                ?: getSecondFromDays("30")
-
-        val payload = JSONObject().apply {
-            put("content_id", contentItems?.id)
-            put("k_id", contentItems?.kId)
-            put("user_id", "943592")
-            put("package_id", "2")
-            put("licence_duration", downloadExpiry)
-            put("security_level", "0")
-            put("rental_duration", "0")
-            put("content_type", accessType)
-            put("download", "1")
-        }
-
-        val deviceId = GUIDGenerator.generateGUID(context)
-
-        return DRM_LICENSE_URL +
-                "user_id=$deviceId" +
-                "&type=$DRM_TYPE" +
-                "&authorization=$TOKEN" +
-                "&payload=${ApiEncryptionHelper.convertStringToBase64(payload.toString())}"
-    }*/
-
 
     private fun getDrmToken(context: Context, contentItems: ContentItem?): String {
         var accessType = contentItems?.accessType
@@ -92,12 +61,15 @@ object FileUtils {
         jsonObject.put("content_type", accessType)
         jsonObject.put("download", "1")
         jsonObject.put("can_renew", true)
+        jsonObject.put("allow_persistent_license", true)
         val androidDeviceUniqueId = GUIDGenerator.generateGUID(context)
         val drmToken =
             DRM_LICENSE_URL + "" + "user_id=" + androidDeviceUniqueId + "&type=" + DRM_TYPE + "&" + "authorization=" +
-                TOKEN + "&payload=" + ApiEncryptionHelper.convertStringToBase64(
+                    TOKEN + "&payload=" + ApiEncryptionHelper.convertStringToBase64(
                 jsonObject.toString()
             )
+
+        Log.d("MtvVideoPlayerSdk", "drmToken: $drmToken")
 
         return drmToken
     }
@@ -107,13 +79,16 @@ object FileUtils {
         downloadedContentEntity: DownloadedContentEntity
     ): List<PlayerModel> {
 
+        val downloadCache = (applicationContext as AppClass).downloadCache
         val cacheFactory = (applicationContext as AppClass).cacheDataSourceFactory
-        
+        val downloadManager = (applicationContext as AppClass).downloadManager
+
         // ✅ Determine if content is DRM: if licenseUri exists, it's DRM content
-        val isDrm = !downloadedContentEntity.licenseUri.isNullOrBlank()
-        
+        val isDrm = downloadedContentEntity.licenseUri.isNotBlank()
+
         return listOf(
             PlayerModel(
+                id = downloadedContentEntity.contentId,
                 // ▶️ Playback URL
                 hlsUrl = downloadedContentEntity.contentUrl,
                 mpdUrl = downloadedContentEntity.contentUrl,
@@ -135,7 +110,9 @@ object FileUtils {
 
                 // 📡 Downloaded content is NOT live
                 isLive = false,
-                cacheFactory = cacheFactory
+                cacheFactory = cacheFactory,
+                downloadManager = downloadManager,
+                downloadCache = downloadCache
             )
         )
     }
@@ -163,7 +140,8 @@ object FileUtils {
             if (override.url.isNullOrBlank()) {
                 return pagingItems.itemSnapshotList.items.mapNotNull { content ->
 
-                    val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
+                  //  val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
+                    val hls = content.url?.takeIf { it.isNotBlank() }
                     val mpd = content.url?.takeIf { it.isNotBlank() }
                     if (hls == null && mpd == null) return@mapNotNull null
 
@@ -216,9 +194,8 @@ object FileUtils {
 
         return pagingItems.itemSnapshotList.items.mapNotNull { content ->
 
-            val cacheFactory = (applicationContext as AppClass).cacheDataSourceFactory
-
-            val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
+           // val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
+            val hls = content.url?.takeIf { it.isNotBlank() }
             val mpd = content.url?.takeIf { it.isNotBlank() }
             if (hls == null && mpd == null) return@mapNotNull null
 
@@ -245,7 +222,7 @@ object FileUtils {
                 adsConfig = AdsConfig(enableAds = false),
                 skipIntro = SkipIntro(enableSkipIntro = false),
                 nextEpisode = NextEpisode(enableNextEpisode = false),
-                cacheFactory = cacheFactory
+                cacheFactory = null
             )
         }
     }
@@ -257,7 +234,8 @@ object FileUtils {
 
         if (contentItem == null) return null
 
-        val hlsUrl = contentItem.hlsUrl?.takeIf { it.isNotBlank() }
+      //  val hlsUrl = contentItem.hlsUrl?.takeIf { it.isNotBlank() }
+        val hlsUrl = contentItem.url?.takeIf { it.isNotBlank() }
         val mpdUrl = contentItem.url?.takeIf { it.isNotBlank() }
 
         // Skip if no playable URL is available
