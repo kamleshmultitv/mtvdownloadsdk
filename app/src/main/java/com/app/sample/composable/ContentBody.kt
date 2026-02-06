@@ -26,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.mtvdownloader.entity.DownloadEntity
 import com.app.sample.R
 import com.app.sample.composable.download.DownloadPlayer
 import com.app.sample.composable.download.DownloadedContentList
@@ -61,11 +61,11 @@ fun ContentBody(
     }
 
     val downloadedContentList = remember {
-        mutableStateListOf<DownloadedContentEntity>()
+        mutableStateListOf<DownloadEntity>()
     }
 
     var showDownloadedList by remember { mutableStateOf(false) }
-    var selectedItem by remember { mutableStateOf<DownloadedContentEntity?>(null) }
+    var selectedItem by remember { mutableStateOf<DownloadEntity?>(null) }
 
     Box(
         modifier = Modifier

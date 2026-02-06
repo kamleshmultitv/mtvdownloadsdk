@@ -5,7 +5,6 @@ import android.text.TextUtils
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.paging.compose.LazyPagingItems
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.mtvdownloader.model.DownloadModel
 import com.app.sample.AppClass
 import com.app.sample.BuildConfig.DRM_LICENSE_URL
@@ -104,7 +103,7 @@ object FileUtils {
 
     @OptIn(UnstableApi::class)
     fun buildContentListFromDownloaded(
-        downloadedContentEntity: DownloadedContentEntity
+        downloadedContentEntity: DownloadModel
     ): List<PlayerModel> {
 
         val cacheFactory = (applicationContext as AppClass).cacheDataSourceFactory

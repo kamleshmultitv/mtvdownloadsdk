@@ -4,37 +4,37 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.mtvdownloader.entity.DownloadEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DownloadedContentDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(content: DownloadedContentEntity)
+    suspend fun insert(content: DownloadEntity)
 
     @Query("DELETE FROM downloaded_content WHERE contentId = :contentId")
     suspend fun deleteByContentId(contentId: String)
 
     @Query("SELECT * FROM downloaded_content WHERE contentId = :contentId")
-    fun getDownloadedContent(contentId: String): Flow<DownloadedContentEntity?>
+    fun getDownloadedContent(contentId: String): Flow<DownloadEntity?>
 
     @Query("SELECT * FROM downloaded_content WHERE contentId = :contentId LIMIT 1")
-    suspend fun getDownloadedContentOnce(contentId: String): DownloadedContentEntity?
+    suspend fun getDownloadedContentOnce(contentId: String): DownloadEntity?
 
-    @Query("SELECT * FROM downloaded_content WHERE contentUrl = :contentUrl LIMIT 1")
-    suspend fun getDownloadedContentByContentUrl(contentUrl: String): DownloadedContentEntity?
+    @Query("SELECT * FROM downloaded_content WHERE mpdUrl = :contentUrl LIMIT 1")
+    suspend fun getDownloadedContentByContentUrl(contentUrl: String): DownloadEntity?
 
-    @Query("SELECT * FROM downloaded_content ORDER BY downloadedAt DESC")
-    fun getAllDownloadedContent(): Flow<List<DownloadedContentEntity>>
+    @Query("SELECT * FROM downloaded_content ORDER BY timeStamp DESC")
+    fun getAllDownloadedContent(): Flow<List<DownloadEntity>>
 
     @Query(
         """
         UPDATE downloaded_content
-        SET downloadProgress = :progress,
+        SET progress = :progress,
             downloadStatus = :status,
-            downloadedAt = COALESCE(:downloadedAt, downloadedAt),
-            localFilePath = COALESCE(:localFilePath, localFilePath)
+            timeStamp = COALESCE(:downloadedAt, timeStamp),
+            mediaPath = COALESCE(:localFilePath, mediaPath)
         WHERE contentId = :contentId
         """
     )
@@ -73,16 +73,16 @@ interface DownloadedContentDao {
         """
         SELECT * FROM downloaded_content
         WHERE downloadStatus = :status
-        ORDER BY downloadedAt ASC
+        ORDER BY timeStamp ASC
         LIMIT 1
         """
     )
-    suspend fun getNextQueuedContent(status: String): DownloadedContentEntity?
+    suspend fun getNextQueuedContent(status: String): DownloadEntity?
 
     // Get DRM keySetId (as ByteArray? if stored as BLOB)
     @Query(
         """
-        SELECT drmKeySetId FROM downloaded_content
+        SELECT keySetId FROM downloaded_content
         WHERE contentId = :contentId
         LIMIT 1
         """
@@ -93,7 +93,7 @@ interface DownloadedContentDao {
     @Query(
         """
         UPDATE downloaded_content
-        SET drmKeySetId = :keySetId
+        SET keySetId = :keySetId
         WHERE contentId = :contentId
         """
     )

@@ -7,11 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.app.mtvdownloader.local.dao.DownloadedContentDao
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.mtvdownloader.entity.DownloadEntity
 
 // bump version to 2 because we add a migration from 1 -> 2
 @Database(
-    entities = [DownloadedContentEntity::class],
+    entities = [DownloadEntity::class],
     version = 1
 )
 abstract class DownloadDatabase : RoomDatabase() {
@@ -27,7 +27,7 @@ abstract class DownloadDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 1) Add column 'notes' with default empty string so existing rows get value.
                 // If you want NULL default, drop DEFAULT clause and set nullable type in entity.
-                db.execSQL("ALTER TABLE DownloadedContentEntity ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE DownloadModel ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
 
                 // 2) If you need to create a new table in v2, you can do it here:
                 // db.execSQL("""

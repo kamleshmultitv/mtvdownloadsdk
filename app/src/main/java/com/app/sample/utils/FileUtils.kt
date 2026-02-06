@@ -6,8 +6,7 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.paging.compose.LazyPagingItems
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
-import com.app.mtvdownloader.model.DownloadModel
+import com.app.mtvdownloader.entity.DownloadEntity
 import com.app.sample.AppClass
 import com.app.sample.BuildConfig.DRM_LICENSE_URL
 import com.app.sample.extra.ApiConstant.DRM_TYPE
@@ -76,7 +75,7 @@ object FileUtils {
 
     @OptIn(UnstableApi::class)
     fun buildContentListFromDownloaded(
-        downloadedContentEntity: DownloadedContentEntity
+        downloadedContentEntity: DownloadEntity
     ): List<PlayerModel> {
 
         val downloadCache = (applicationContext as AppClass).downloadCache
@@ -84,26 +83,26 @@ object FileUtils {
         val downloadManager = (applicationContext as AppClass).downloadManager
 
         // ✅ Determine if content is DRM: if licenseUri exists, it's DRM content
-        val isDrm = downloadedContentEntity.licenseUri.isNotBlank()
+        val isDrm = downloadedContentEntity.drm?.isNotBlank()
 
         return listOf(
             PlayerModel(
                 id = downloadedContentEntity.contentId,
                 // ▶️ Playback URL
-                hlsUrl = downloadedContentEntity.contentUrl,
-                mpdUrl = downloadedContentEntity.contentUrl,
+                hlsUrl = downloadedContentEntity.hlsUrl,
+                mpdUrl = downloadedContentEntity.mpdUrl,
 
                 // 🔐 DRM
-                drm = if (isDrm) "1" else "0",
-                drmToken = downloadedContentEntity.licenseUri,
+                drm = if (isDrm == true) "1" else "0",
+                drmToken = downloadedContentEntity.drmToken,
 
                 // 🖼️ Artwork
-                imageUrl = downloadedContentEntity.thumbnailUrl
-                    ?: downloadedContentEntity.seasonImage,
+                imageUrl = downloadedContentEntity.imageUrl
+                    ?: downloadedContentEntity.seasonBanner,
 
                 // 📝 Metadata
                 title = downloadedContentEntity.title,
-                seasonTitle = downloadedContentEntity.seasonName,
+                seasonTitle = downloadedContentEntity.seasonTitle,
 
                 // 🎞️ Quality preference (fallback to 1080)
                 selectedVideoQuality = downloadedContentEntity.videoHeight ?: 1080,
@@ -140,7 +139,6 @@ object FileUtils {
             if (override.url.isNullOrBlank()) {
                 return pagingItems.itemSnapshotList.items.mapNotNull { content ->
 
-                  //  val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
                     val hls = content.url?.takeIf { it.isNotBlank() }
                     val mpd = content.url?.takeIf { it.isNotBlank() }
                     if (hls == null && mpd == null) return@mapNotNull null
@@ -195,7 +193,7 @@ object FileUtils {
         return pagingItems.itemSnapshotList.items.mapNotNull { content ->
 
            // val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
-            val hls = content.url?.takeIf { it.isNotBlank() }
+            val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
             val mpd = content.url?.takeIf { it.isNotBlank() }
             if (hls == null && mpd == null) return@mapNotNull null
 
@@ -230,19 +228,18 @@ object FileUtils {
     fun buildDownloadContentList(
         context: Context,
         contentItem: ContentItem?
-    ): DownloadModel? {
+    ): DownloadEntity? {
 
         if (contentItem == null) return null
 
-      //  val hlsUrl = contentItem.hlsUrl?.takeIf { it.isNotBlank() }
-        val hlsUrl = contentItem.url?.takeIf { it.isNotBlank() }
+        val hlsUrl = contentItem.hlsUrl?.takeIf { it.isNotBlank() }
         val mpdUrl = contentItem.url?.takeIf { it.isNotBlank() }
 
         // Skip if no playable URL is available
         if (hlsUrl == null && mpdUrl == null) return null
 
-        return DownloadModel(
-            id = contentItem.id.orEmpty(),
+        return DownloadEntity(
+            contentId = contentItem.id.orEmpty(),
             seasonId = contentItem.seasonId.orEmpty(),
             hlsUrl = hlsUrl,
             mpdUrl = mpdUrl,
@@ -257,10 +254,7 @@ object FileUtils {
 
             title = contentItem.title.orEmpty(),
             description = contentItem.shortDesc.orEmpty(),
-            srt = contentItem.subtitle
-                ?.firstOrNull()
-                ?.srt
-                .orEmpty()
+            srt = contentItem.subtitle?.firstOrNull()?.srt.orEmpty()
         )
     }
 }

@@ -8,7 +8,7 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import com.app.mtvdownloader.DownloadUtil
 import com.app.mtvdownloader.local.dao.DownloadedContentDao
 import com.app.mtvdownloader.local.database.DownloadDatabase
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.mtvdownloader.entity.DownloadEntity
 import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_DOWNLOADING
 import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_PAUSED
 import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_QUEUED
@@ -30,15 +30,15 @@ class DownloadRepository private constructor(appContext: Context) {
 
     /* -------------------- READ -------------------- */
 
-    fun getDownloadedContent(contentId: String): Flow<DownloadedContentEntity?> =
+    fun getDownloadedContent(contentId: String): Flow<DownloadEntity?> =
         dao.getDownloadedContent(contentId)
 
-    fun getAllDownloadedContent(): Flow<List<DownloadedContentEntity>> =
+    fun getAllDownloadedContent(): Flow<List<DownloadEntity>> =
         dao.getAllDownloadedContent()
 
     suspend fun getDownloadedContentOnce(
         contentId: String
-    ): DownloadedContentEntity? =
+    ): DownloadEntity? =
         dao.getDownloadedContentOnce(contentId)
 
     /* -------------------- DELETE -------------------- */
@@ -72,11 +72,11 @@ class DownloadRepository private constructor(appContext: Context) {
         ) > 0
     }
 
-    suspend fun insertOrUpdate(entity: DownloadedContentEntity) {
+    suspend fun insertOrUpdate(entity: DownloadEntity) {
         dao.insert(entity)
     }
 
-    suspend fun getNextQueuedContent(): DownloadedContentEntity? {
+    suspend fun getNextQueuedContent(): DownloadEntity? {
         return dao.getNextQueuedContent(
             DOWNLOAD_STATUS_QUEUED
         )

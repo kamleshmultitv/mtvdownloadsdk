@@ -14,7 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.mtvdownloader.entity.DownloadEntity
 import com.app.mtvdownloader.ui.DownloadButton
 import com.app.mtvdownloader.provider.DownloadIconProvider
 import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_COMPLETED
@@ -29,7 +29,7 @@ import com.app.sample.utils.FileUtils.buildDownloadContentList
 fun ContentCard(
     content: ContentItem?,
     playContent: () -> Unit,
-    downloadContentList: (List<DownloadedContentEntity>) -> Unit
+    downloadContentList: (List<DownloadEntity>) -> Unit
 ) {
     val context = LocalContext.current
 

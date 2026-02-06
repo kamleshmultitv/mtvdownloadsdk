@@ -14,12 +14,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
 import com.app.mtvdownloader.helper.HlsQualityHelper
-import com.app.mtvdownloader.helper.ReelDownloadHelper.cancelDownload
-import com.app.mtvdownloader.helper.ReelDownloadHelper.pauseDownload
-import com.app.mtvdownloader.helper.ReelDownloadHelper.resumeDownload
-import com.app.mtvdownloader.helper.ReelDownloadHelper.startDownloadWithQuality
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
-import com.app.mtvdownloader.model.DownloadModel
+import com.app.mtvdownloader.helper.DownloadHelper.cancelDownload
+import com.app.mtvdownloader.helper.DownloadHelper.pauseDownload
+import com.app.mtvdownloader.helper.DownloadHelper.resumeDownload
+import com.app.mtvdownloader.helper.DownloadHelper.startDownloadWithQuality
+import com.app.mtvdownloader.entity.DownloadEntity
 import com.app.mtvdownloader.model.DownloadQuality
 import com.app.mtvdownloader.provider.DefaultDownloadIconProvider
 import com.app.mtvdownloader.provider.DownloadIconProvider
@@ -50,11 +49,11 @@ import kotlin.toString
 @OptIn(UnstableApi::class)
 @Composable
 fun DownloadButton(
-    contentItem: DownloadModel,
+    contentItem: DownloadEntity,
     modifier: Modifier = Modifier,
     customQualitySelector: CustomQualitySelector? = null, // optional
     iconProvider: DownloadIconProvider = DefaultDownloadIconProvider, // optional
-    onDownloadedListUpdate: (List<DownloadedContentEntity>) -> Unit = {}
+    onDownloadedListUpdate: (List<DownloadEntity>) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -67,16 +66,16 @@ fun DownloadButton(
 
     /* ---------- Download VM ---------- */
     val application = context.applicationContext as Application
-    val viewModel = remember(contentItem.id) {
+    val viewModel = remember(contentItem.contentId) {
         DownloadViewModel(application)
     }
 
     val downloadState by viewModel
-        .observeDownload(contentItem.id.toString())
+        .observeDownload(contentItem.contentId)
         .collectAsState(initial = null)
 
     val status = downloadState?.downloadStatus
-    val progress = (downloadState?.downloadProgress ?: 0) / 100f
+    val progress = (downloadState?.progress ?: 0) / 100f
 
     val downloadedList by viewModel
         .getAllDownloadedContent()
@@ -87,7 +86,7 @@ fun DownloadButton(
     }
 
     /* ---------- Download Executor ---------- */
-    val startDownload: (DownloadQuality) -> Unit = remember(contentItem.id) {
+    val startDownload: (DownloadQuality) -> Unit = remember(contentItem.contentId) {
         { quality ->
             startDownloadWithQuality(context, contentItem, quality)
         }
@@ -161,7 +160,7 @@ fun DownloadButton(
                     text = { Text("Pause Download") },
                     onClick = {
                         showMenu = false
-                        pauseDownload(context, contentItem.id.toString())
+                        pauseDownload(context, contentItem.contentId)
                     }
                 )
             }
@@ -180,7 +179,7 @@ fun DownloadButton(
                 text = { Text("Cancel Download") },
                 onClick = {
                     showMenu = false
-                    cancelDownload(context, contentItem.id.toString())
+                    cancelDownload(context, contentItem.contentId)
                 }
             )
         }

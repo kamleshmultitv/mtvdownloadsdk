@@ -23,12 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.app.mtvdownloader.R
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 
 @Composable
 fun DownloadedContentRow(
-    item: DownloadedContentEntity,
-    onItemClick: (DownloadedContentEntity) -> Unit
+    item: DownloadModel,
+    onItemClick: (DownloadModel) -> Unit
 ) {
     Column {
         Row(

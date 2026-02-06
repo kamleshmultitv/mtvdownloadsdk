@@ -15,13 +15,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import com.app.mtvdownloader.helper.HlsQualityHelper
-import com.app.mtvdownloader.model.DownloadModel
+import com.app.mtvdownloader.entity.DownloadEntity
 import com.app.mtvdownloader.model.DownloadQuality
 
 @Composable
 fun ShowQualitySelectorDialog(
     context: Context,
-    contentItem: DownloadModel,
+    contentItem: DownloadEntity,
     onDismiss: () -> Unit,
     onQualitySelected: (DownloadQuality) -> Unit
 ) {

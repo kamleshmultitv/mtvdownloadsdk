@@ -9,13 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
+import com.app.mtvdownloader.entity.DownloadEntity
 import com.app.sample.R
 
 @Composable
 fun DownloadedContentList(
-    downloadContentList: SnapshotStateList<DownloadedContentEntity>,
-    onItemClick: (DownloadedContentEntity) -> Unit,
+    downloadContentList: SnapshotStateList<DownloadEntity>,
+    onItemClick: (DownloadEntity) -> Unit,
     onBackClick: () -> Unit
 ) {
 

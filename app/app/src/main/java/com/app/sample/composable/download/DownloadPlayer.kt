@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
-import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.mtvdownloader.repository.DownloadRepository
 import com.app.sample.AppClass
 import com.app.sample.R
@@ -19,7 +18,7 @@ import okhttp3.internal.platform.PlatformRegistry.applicationContext
 
 @Composable
 fun DownloadPlayer(
-    downloadedContentEntity: DownloadedContentEntity,
+    downloadedContentEntity: DownloadModel,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
