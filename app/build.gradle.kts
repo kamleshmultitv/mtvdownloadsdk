@@ -9,7 +9,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.aol.sspt"
+        applicationId = "com.app.sample"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -140,11 +140,11 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
 
     // SDK
-     implementation(project(":videosdk"))
+  //   implementation(project(":videosdk"))
     implementation(project(":mtvdownloader"))
 
    //  implementation(libs.mtvdownloadsdk)
-  //  implementation(libs.mtvplayersdk)
+    implementation(libs.mtvplayersdk)
 
 
 }

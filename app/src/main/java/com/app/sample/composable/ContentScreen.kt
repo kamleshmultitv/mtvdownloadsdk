@@ -17,7 +17,8 @@ import com.app.videosdk.listener.PipListener
 @Composable
 fun ContentScreen(
     viewModel: ContentViewModel,
-    pipListener: PipListener
+    pipListener: PipListener,
+    isInPipMode: Boolean,
 ) {
     val context = LocalContext.current
     val pagingItems = viewModel.contentListData.collectAsLazyPagingItems()
@@ -40,6 +41,7 @@ fun ContentScreen(
             selectedIndex = selectedIndex,
             overrideContent = overrideContent,
             pipListener = pipListener,
+            isInPipMode = isInPipMode,
             isFullScreen = isFullScreen,
             onFullScreenChange = { isFullScreen = it },
             onOverrideContent = { overrideContent = it }

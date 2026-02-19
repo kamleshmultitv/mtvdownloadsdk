@@ -44,6 +44,7 @@ fun ContentBody(
     selectedIndex: MutableIntState,
     overrideContent: OverrideContent?,
     pipListener: PipListener,
+    isInPipMode: Boolean,
     isFullScreen: Boolean,
     onFullScreenChange: (Boolean) -> Unit,
     onOverrideContent: (OverrideContent?) -> Unit
@@ -83,6 +84,7 @@ fun ContentBody(
                     contentList = contentList,
                     index = selectedIndex.intValue,
                     pipListener = pipListener,
+                    isInPipMode = isInPipMode,
                     onPlayerBack = {  },
                     setFullScreen = onFullScreenChange,
                     playerStateListener = object : PlayerStateListener {

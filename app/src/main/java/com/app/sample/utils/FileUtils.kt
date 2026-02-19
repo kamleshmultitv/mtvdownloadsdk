@@ -101,7 +101,7 @@ object FileUtils {
                     ?: downloadedContentEntity.seasonBanner,
 
                 // 📝 Metadata
-                title = downloadedContentEntity.title,
+                episodeTitle = downloadedContentEntity.title,
                 seasonTitle = downloadedContentEntity.seasonTitle,
 
                 // 🎞️ Quality preference (fallback to 1080)
@@ -158,7 +158,7 @@ object FileUtils {
                             ?.firstOrNull()
                             ?.url.orEmpty(),
 
-                        title = content.title.orEmpty(),
+                        episodeTitle = content.title.orEmpty(),
                         description = content.shortDesc.orEmpty(),
                         srt = content.subtitle?.firstOrNull()?.srt.orEmpty(),
 
@@ -212,7 +212,7 @@ object FileUtils {
                     ?.firstOrNull()
                     ?.url.orEmpty(),
 
-                title = content.title.orEmpty(),
+                episodeTitle = content.title.orEmpty(),
                 description = content.shortDesc.orEmpty(),
                 srt = content.subtitle?.firstOrNull()?.srt.orEmpty(),
 
