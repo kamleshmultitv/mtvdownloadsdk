@@ -99,8 +99,7 @@ object FileUtils {
             if (override.url.isNullOrBlank()) {
                 return pagingItems.itemSnapshotList.items.mapNotNull { content ->
 
-                    //  val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
-                    val hls = content.url?.takeIf { it.isNotBlank() }
+                      val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
                     val mpd = content.url?.takeIf { it.isNotBlank() }
                     if (hls == null && mpd == null) return@mapNotNull null
 
@@ -200,8 +199,7 @@ object FileUtils {
 
         return pagingItems.itemSnapshotList.items.mapNotNull { content ->
 
-            // val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
-            val hls = content.url?.takeIf { it.isNotBlank() }
+            val hls = content.hlsUrl?.takeIf { it.isNotBlank() }
             val mpd = content.url?.takeIf { it.isNotBlank() }
             if (hls == null && mpd == null) return@mapNotNull null
 
