@@ -352,7 +352,7 @@ object FileUtils {
         if (contentItem == null) return null
 
         val hlsUrl = contentItem.hlsUrl?.takeIf { it.isNotBlank() }
-        val mpdUrl = contentItem.url?.takeIf { it.isNotBlank() }
+        val mpdUrl = contentItem.hlsUrl?.takeIf { it.isNotBlank() }
 
         // Skip if no playable URL is available
         if (hlsUrl == null && mpdUrl == null) return null
