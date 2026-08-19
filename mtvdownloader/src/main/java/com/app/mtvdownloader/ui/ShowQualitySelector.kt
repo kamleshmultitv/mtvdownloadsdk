@@ -17,21 +17,28 @@ import androidx.compose.ui.text.style.TextAlign
 import com.app.mtvdownloader.helper.HlsQualityHelper
 import com.app.mtvdownloader.model.DownloadModel
 import com.app.mtvdownloader.model.DownloadQuality
+import com.app.mtvdownloader.utils.DownloadSourceResolver
 
 @Composable
 fun ShowQualitySelectorDialog(
     context: Context,
     contentItem: DownloadModel,
     onDismiss: () -> Unit,
-    onQualitySelected: (DownloadQuality) -> Unit
+    onQualitySelected: (DownloadQuality) -> Unit,
+    qualities: List<DownloadQuality>? = null
 ) {
-    var qualities by remember { mutableStateOf<List<DownloadQuality>>(emptyList()) }
+    var loadedQualities by remember { mutableStateOf(qualities.orEmpty()) }
 
-    LaunchedEffect(Unit) {
-        qualities = HlsQualityHelper.getHlsQualities(
-            context,
-            if (contentItem.drm == "1") contentItem.mpdUrl.toString() else contentItem.hlsUrl.toString()
-        )
+    LaunchedEffect(contentItem, qualities) {
+        if (qualities != null) {
+            loadedQualities = qualities
+            return@LaunchedEffect
+        }
+
+        val url = DownloadSourceResolver.resolve(contentItem)?.url
+            ?: return@LaunchedEffect
+
+        loadedQualities = HlsQualityHelper.getDownloadQualities(context, url)
     }
 
     AlertDialog(
@@ -41,7 +48,7 @@ fun ShowQualitySelectorDialog(
         },
         text = {
             Column {
-                qualities.forEach { quality ->
+                loadedQualities.forEach { quality ->
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {

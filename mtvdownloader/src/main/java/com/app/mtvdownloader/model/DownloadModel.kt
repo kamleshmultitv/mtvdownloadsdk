@@ -13,4 +13,8 @@ data class DownloadModel(
     val seasonDescription: String? = null,
     val srt: String? = null,
     val drm: String? = null,
+    val mp4Url: String? = null,
+    val drmLicenseExpiresAt: Long? = null,
+    val drmKeyId: String? = null,
+    val drmScheme: String? = null
 )

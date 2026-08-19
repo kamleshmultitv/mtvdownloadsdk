@@ -9,5 +9,6 @@ data class DownloadQuality(
     val height: Int,
     val bitrate: Int,
     val label: String,
-    val streamKey: StreamKey
+    val streamKey: StreamKey,
+    val streamKeys: List<StreamKey> = listOf(streamKey)
 )

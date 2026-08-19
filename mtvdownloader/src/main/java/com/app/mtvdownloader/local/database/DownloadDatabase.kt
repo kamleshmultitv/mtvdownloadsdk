@@ -9,10 +9,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.app.mtvdownloader.local.dao.DownloadedContentDao
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 
-// bump version to 2 because we add a migration from 1 -> 2
 @Database(
     entities = [DownloadedContentEntity::class],
-    version = 1
+    version = 5,
+    exportSchema = true
 )
 abstract class DownloadDatabase : RoomDatabase() {
     abstract fun downloadedContentDao(): DownloadedContentDao
@@ -21,24 +21,37 @@ abstract class DownloadDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: DownloadDatabase? = null
 
-        // Example migration: add a new column "notes" to the RemindMeEntity table.
-        // Adjust table/column names to match your actual @Entity(tableName = "...") if you use custom names.
+        // Version 2 keeps the same schema. This preserves installs that already saw
+        // DB version 2 without adding columns Room does not expect.
         private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) = Unit
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1) Add column 'notes' with default empty string so existing rows get value.
-                // If you want NULL default, drop DEFAULT clause and set nullable type in entity.
-                db.execSQL("ALTER TABLE DownloadedContentEntity ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN queuedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN failureCode TEXT")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN failureReason TEXT")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN retryCount INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN maxRetryCount INTEGER NOT NULL DEFAULT 3")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN drmLicenseExpiresAt INTEGER")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN drmLicenseLastRefreshAt INTEGER")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN drmLicenseRefreshStatus TEXT")
+            }
+        }
 
-                // 2) If you need to create a new table in v2, you can do it here:
-                // db.execSQL("""
-                //   CREATE TABLE IF NOT EXISTS `NewEntity` (
-                //     `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                //     `title` TEXT
-                //   )
-                // """.trimIndent())
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN drmOfflineKeySetId BLOB")
+            }
+        }
 
-                // 3) If you need to populate data or migrate values, you can run INSERT/UPDATEs here.
-                // Example: copy data from an old table to a new normalized table, etc.
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN drmOfflineKeySetIdBase64 TEXT")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN drmScheme TEXT")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN drmKeyId TEXT")
+                db.execSQL("ALTER TABLE downloaded_content ADD COLUMN contentMimeType TEXT")
             }
         }
 
@@ -49,9 +62,12 @@ abstract class DownloadDatabase : RoomDatabase() {
                     DownloadDatabase::class.java,
                     "download_db"
                 )
-                    // add migrations you implement
-                    .addMigrations(MIGRATION_1_2)
-                    // do NOT call fallbackToDestructiveMigration() if you want to preserve user data.
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4,
+                        MIGRATION_4_5
+                    )
                     .build()
                     .also { INSTANCE = it }
             }

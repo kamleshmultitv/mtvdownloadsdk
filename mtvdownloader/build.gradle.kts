@@ -55,6 +55,13 @@ android {
 
 }
 
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.incremental", "true")
+    }
+}
+
 /**
  * ✅ Maven Publish (KEEP OUTSIDE android {})
  * This publishes ONLY downloader sdk (not app)
@@ -67,7 +74,7 @@ afterEvaluate {
 
                 groupId = "com.github.kamleshmultitv"
                 artifactId = "mtvdownloader"
-                version = "download-1.0.9"
+                version = "download-1.1.0"
             }
         }
     }
@@ -100,7 +107,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     // ExoPlayer / Media3
-    implementation(libs.androidx.media3.exoplayer)
+    api(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.exoplayer.dash)
 }

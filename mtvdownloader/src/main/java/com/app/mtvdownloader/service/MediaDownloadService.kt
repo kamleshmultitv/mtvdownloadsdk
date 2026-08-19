@@ -11,7 +11,12 @@ import androidx.media3.exoplayer.scheduler.Scheduler
 import com.app.mtvdownloader.DownloadUtil
 import com.app.mtvdownloader.R
 import com.app.mtvdownloader.local.database.DownloadDatabase
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(UnstableApi::class)
 class MediaDownloadService : DownloadService(
@@ -39,6 +44,7 @@ class MediaDownloadService : DownloadService(
     }
 
     private val titleCache = mutableMapOf<String, String>()
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun getDownloadManager(): DownloadManager {
         return DownloadUtil.getDownloadManager(this)
@@ -54,16 +60,70 @@ class MediaDownloadService : DownloadService(
         val notificationHelper =
             DownloadUtil.getDownloadNotificationHelper(this, CHANNEL_ID)
 
-        val title = resolveNotificationTitle(downloads)
+        val message = resolveNotificationMessage(downloads)
 
         return notificationHelper.buildProgressNotification(
             this,
             R.drawable.ic_download,
             null,
-            title,
+            message,
             downloads,
             notMetRequirements
         )
+    }
+
+    private fun resolveNotificationMessage(downloads: List<Download>): String {
+
+        if (downloads.isEmpty()) return getString(R.string.app_name)
+
+        val title = resolveNotificationTitle(downloads)
+        val progressText = resolveProgressText(downloads)
+
+        return if (progressText.isBlank()) {
+            title
+        } else {
+            "$title - $progressText"
+        }
+    }
+
+    private fun resolveProgressText(downloads: List<Download>): String {
+
+        val activeDownloads = downloads.filterNot {
+            it.state == Download.STATE_COMPLETED
+        }.ifEmpty {
+            downloads
+        }
+
+        val progressValues = activeDownloads.mapNotNull {
+            it.downloadPercentOrNull()
+        }
+
+        if (progressValues.isNotEmpty()) {
+            val average = progressValues.average().roundToInt().coerceIn(0, 100)
+            return "$average% downloaded"
+        }
+
+        return when {
+            downloads.any { it.state == Download.STATE_QUEUED } -> "Waiting to download"
+            downloads.any { it.state == Download.STATE_STOPPED } -> "Paused"
+            downloads.any { it.state == Download.STATE_COMPLETED } -> "100% downloaded"
+            else -> ""
+        }
+    }
+
+    private fun Download.downloadPercentOrNull(): Int? {
+
+        if (state == Download.STATE_COMPLETED) return 100
+
+        if (!percentDownloaded.isNaN() && percentDownloaded >= 0f) {
+            return percentDownloaded.roundToInt().coerceIn(0, 100)
+        }
+
+        return if (contentLength > 0L) {
+            ((bytesDownloaded * 100L) / contentLength).toInt().coerceIn(0, 100)
+        } else {
+            null
+        }
     }
 
     private fun resolveNotificationTitle(downloads: List<Download>): String {
@@ -81,7 +141,7 @@ class MediaDownloadService : DownloadService(
         val contentId = downloads.first().request.id
         titleCache[contentId]?.let { return it }
 
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             val dao = DownloadDatabase
                 .getInstance(applicationContext)
                 .downloadedContentDao()
@@ -92,5 +152,10 @@ class MediaDownloadService : DownloadService(
         }
 
         return getString(R.string.app_name)
+    }
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
     }
 }

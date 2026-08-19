@@ -3,5 +3,4 @@ jdk:
 
 build:
   commands:
-    - ./gradlew :videosdk:publishToMavenLocal
-
+    - sh gradlew :mtvdownloader:publishToMavenLocal

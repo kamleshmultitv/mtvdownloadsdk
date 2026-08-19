@@ -1,127 +1,248 @@
-# 📥 MTV Downloader SDK (Android)
+# MTV Downloader SDK
 
-[![JitPack](https://jitpack.io/v/kamleshmultitv/mtv-downloader.svg)](https://jitpack.io/#kamleshmultitv/mtv-downloader)
+Android downloader SDK for third-party apps that need offline downloads for HLS, DASH/MPD, and MP4 content. The SDK owns the Media3 download queue, foreground service, notification, Room download state, pause/resume/cancel actions, and a Compose download button.
 
-A modern Android Download SDK built with Media3 and Jetpack Compose, designed for reliable background downloads, HLS quality selection, and a fully customizable UI.
+## What It Supports
 
-## ✨ Features
+| Format | Field | Quality Selection | Notes |
+| --- | --- | --- | --- |
+| HLS | `hlsUrl` | Yes | `.m3u8` streams use Media3 HLS downloads. |
+| DASH/MPD | `mpdUrl` | Yes | `.mpd` streams use Media3 DASH downloads. |
+| MP4 | `mp4Url` | No | Progressive MP4 downloads start directly. |
+| Widevine DRM MPD | `mpdUrl` + `drm = "1"` + `drmToken` | Yes | Used when no HLS URL is available; requires a non-empty license URL before enqueueing. |
 
-*   📥 **HLS Video Downloads**: Efficiently download HLS streams.
-*   🎚 **Quality Selection**: Supports both "Auto" and custom quality selection.
-*   📊 **Progress Tracking**: Real-time download progress updates.
-*   ⏯ **Download Controls**: Pause, resume, and cancel downloads.
-*   🧵 **Queue Management**: Manages a queue of downloads.
-*   🔔 **Foreground Service**: Reliable downloads using a foreground service.
-*   🎨 **Customizable UI**: Default UI is provided, but it's fully customizable.
-*   🖼 **Custom Icons**: Provide custom icons for different download states.
-*   🧠 **Robust Background Handling**: Safely handles downloads in the background and when the app is killed.
-*   🧩 **Compose-first API**: Designed with Jetpack Compose in mind.
+## Install
 
-## 📦 Installation
+Add JitPack to the third-party app repositories.
 
-1.  **Add JitPack Repository**
-
-    In your project-level `settings.gradle` or `build.gradle`:
-
-    ```groovy
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven { url "https://jitpack.io" }
-    }
-    ```
-
-2.  **Add SDK Dependency**
-
-    ```groovy
-    dependencies {
-        implementation "com.github.kamleshmultitv:mtv-downloader:<latest-version>"
-    }
-    ```
-    *Replace `<latest-version>` with the latest version from JitPack.*
-
-## ⚙️ Android Setup (Required)
-
-### Permissions
-
-Add the following permissions to your `AndroidManifest.xml`:
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-```
-
-⚠️ **Android 13+**: The `POST_NOTIFICATIONS` permission must be requested at runtime.
-
-### Jetpack Compose
-
-Enable Jetpack Compose in your `build.gradle`:
-
-```groovy
-android {
-    buildFeatures {
-        compose true
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
     }
 }
 ```
 
-## 🚀 Quick Start (Default Setup)
-
-For the simplest integration, the SDK can handle everything automatically.
+Add the SDK dependency.
 
 ```kotlin
+dependencies {
+    implementation("com.github.kamleshmultitv:mtvdownloader:download-1.1.0")
+}
+```
+
+Replace `download-1.1.0` with the JitPack tag used by your release if you publish a newer version.
+
+## Android Setup
+
+Add permissions in the third-party app `AndroidManifest.xml`.
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+```
+
+For Android 13 and above, request notification permission before starting downloads.
+
+```kotlin
+NotificationPermission.requestIfRequired(activity)
+```
+
+Initialize the SDK once in the app `Application` class.
+
+```kotlin
+class App : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        DownloadSdk.init(
+            application = this,
+            config = DownloadSdkConfig(
+                maxCacheBytes = 1024L * 1024L * 1024L,
+                maxParallelDownloads = 1,
+                minRetryCount = 3
+            )
+        )
+    }
+}
+```
+
+Register the `Application` class in the app manifest.
+
+```xml
+<application
+    android:name=".App"
+    ...>
+</application>
+```
+
+The SDK manifest contributes its own `MediaDownloadService`, so the host app does not need to declare the service manually.
+
+## Compose Setup
+
+The ready-made UI is Compose based, so the third-party app must enable Compose if it uses `DownloadButton`.
+
+```kotlin
+android {
+    buildFeatures {
+        compose = true
+    }
+}
+```
+
+## Basic Usage
+
+Create a `DownloadModel` for each content item and pass it to `DownloadButton`.
+
+```kotlin
+val downloadModel = DownloadModel(
+    id = "movie_1001",
+    seasonId = "season_01",
+    title = "Sample Movie",
+    seasonTitle = "Season 1",
+    hlsUrl = "https://example.com/movie/master.m3u8",
+    imageUrl = "https://example.com/movie/poster.jpg"
+)
+
 DownloadButton(
     contentItem = downloadModel
 )
 ```
 
-This setup uses:
-*   ✔ Default icons
-*   ✔ Default quality selector
-*   ✔ SDK-managed download state
+The SDK will:
 
-### DownloadModel
+- Detect the source format.
+- Show quality selection for HLS and DASH when variants are available.
+- Start MP4 downloads directly.
+- Queue downloads with WorkManager.
+- Run downloads with Media3 `DownloadManager`.
+- Persist state in Room.
+- Show foreground download notifications.
+- Expose progress to the button UI.
 
-You must provide a valid `DownloadModel` to the SDK.
+## DownloadModel Fields
 
-**Example:**
 ```kotlin
-val downloadModel = DownloadModel(
-    id = "content_123",
-    title = "Sample Video",
-    hlsUrl = "https://example.com/stream.m3u8",
-    imageUrl = "",
-    isLive = false
+data class DownloadModel(
+    val id: String? = null,
+    val seasonId: String? = null,
+    val hlsUrl: String? = null,
+    val mpdUrl: String? = null,
+    val drmToken: String? = null,
+    val imageUrl: String? = null,
+    val title: String? = null,
+    val description: String? = null,
+    val seasonTitle: String? = null,
+    val seasonDescription: String? = null,
+    val srt: String? = null,
+    val drm: String? = null,
+    val mp4Url: String? = null,
+    val drmLicenseExpiresAt: Long? = null
 )
 ```
 
-### Example Content Card (Compose)
+Required:
 
-Here is a recommended usage pattern inside lists, feeds, or reels.
+- `id`: stable unique content ID. Do not change it for the same content.
+- At least one playable URL: `hlsUrl`, `mpdUrl`, or `mp4Url`.
+
+Recommended:
+
+- `title`: shown in user messages and notification lookup.
+- `imageUrl`: used by host apps that display downloaded content.
+- `seasonId` and `seasonTitle`: useful for episodic content.
+
+DRM:
+
+- Set `drm = "1"` for DRM content.
+- Provide `hlsUrl` when the same content is playable through HLS; the SDK downloads that HLS source first.
+- Provide `mpdUrl` and a non-empty `drmToken` Widevine license URL when the content must be downloaded through DRM MPD.
+- Provide `drmKeyId` when the host app has the Widevine `k_id`.
+- Optionally provide `drmLicenseExpiresAt` when the host app knows the license expiry timestamp.
+- Signed or extensionless DRM DASH URLs are accepted when `drm = "1"` and `drmToken` are present; manifest preparation then validates that the URL is a DASH MPD with Widevine init data.
+
+For DRM-flagged content with HLS, the SDK downloads HLS first to match online playback and avoid unnecessary Widevine offline-license requests. For DRM MPD downloads, the SDK acquires a Widevine offline license before adding the Media3 download request. The resulting `keySetId` is attached to the `DownloadRequest` and persisted in Room as both `drmOfflineKeySetId` bytes and `drmOfflineKeySetIdBase64`.
+
+## Format Examples
+
+HLS:
+
+```kotlin
+DownloadModel(
+    id = "hls_001",
+    title = "HLS Video",
+    hlsUrl = "https://example.com/video/master.m3u8"
+)
+```
+
+DASH/MPD:
+
+```kotlin
+DownloadModel(
+    id = "dash_001",
+    title = "DASH Video",
+    mpdUrl = "https://example.com/video/manifest.mpd"
+)
+```
+
+MP4:
+
+```kotlin
+DownloadModel(
+    id = "mp4_001",
+    title = "MP4 Video",
+    mp4Url = "https://example.com/video/file.mp4"
+)
+```
+
+Widevine DRM DASH:
+
+```kotlin
+DownloadModel(
+    id = "drm_001",
+    title = "DRM Video",
+    mpdUrl = "https://example.com/video/manifest.mpd",
+    drm = "1",
+    drmToken = "https://license.example.com/widevine"
+)
+```
+
+## Use In A List
 
 ```kotlin
 @Composable
-fun ContentCard(
-    content: ContentItem,
-    onPlay: () -> Unit
+fun ContentRow(
+    item: ContentItem,
+    onOpen: () -> Unit
 ) {
-    val context = LocalContext.current
-
-    val downloadModel = remember(content) {
-        buildDownloadContentList(context, content)
-    } ?: return
+    val downloadModel = remember(item) {
+        DownloadModel(
+            id = item.id,
+            seasonId = item.seasonId,
+            title = item.title,
+            seasonTitle = item.seasonTitle,
+            hlsUrl = item.hlsUrl,
+            mpdUrl = item.mpdUrl,
+            mp4Url = item.mp4Url,
+            drm = if (item.isDrm) "1" else null,
+            drmToken = item.licenseUrl,
+            imageUrl = item.thumbnailUrl
+        )
+    }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
+            text = item.title.orEmpty(),
             modifier = Modifier
                 .weight(1f)
-                .clickable { onPlay() },
-            text = content.title,
-            fontSize = 16.sp
+                .clickable { onOpen() }
         )
 
         DownloadButton(contentItem = downloadModel)
@@ -129,133 +250,273 @@ fun ContentCard(
 }
 ```
 
-## 🛠️ Customization (Optional)
+## Monetization Gate
 
-### Custom Quality Selector
+Use `DownloadMonetizationGate` when the third-party app must show a rewarded ad, validate subscription, check entitlement, or call a backend before allowing downloads.
 
-You can provide your own bottom sheet or dialog for quality selection.
-
-**SDK Contract:**
 ```kotlin
-typealias CustomQualitySelector =
-@Composable (
-    qualities: List<DownloadQuality>,
-    onSelect: (DownloadQuality) -> Unit,
-    onDismiss: () -> Unit
-) -> Unit
+DownloadButton(
+    contentItem = downloadModel,
+    monetizationGate = DownloadMonetizationGate { context, content ->
+        val isLoggedIn = accountManager.isLoggedIn()
+        val hasDownloadAccess = entitlementRepository.canDownload(content.id.orEmpty())
+
+        if (!isLoggedIn || !hasDownloadAccess) {
+            return@DownloadMonetizationGate false
+        }
+
+        rewardedAdController.showAndWait(context)
+    }
+)
 ```
 
-**Usage:**
+Return `true` only when the user is allowed to start the download. Return `false` to block the download. The SDK gate improves UX, but paid content should still be protected by backend authorization and DRM license rules.
+
+## SDK Configuration
+
+Configure download storage and retry policy during SDK initialization.
+
+```kotlin
+DownloadSdk.init(
+    application = this,
+    config = DownloadSdkConfig(
+        maxCacheBytes = 1024L * 1024L * 1024L,
+        maxParallelDownloads = 1,
+        minRetryCount = 3
+    )
+)
+```
+
+Configuration fields:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `maxCacheBytes` | `500 MB` | Maximum Media3 cache size before LRU eviction. |
+| `maxParallelDownloads` | `1` | Number of parallel Media3 downloads. |
+| `minRetryCount` | `3` | Media3 retry count before final failure. |
+
+Call `DownloadSdk.init()` before starting downloads so cache configuration is applied before Media3 cache creation.
+
+## Analytics Listener
+
+Apps can receive download and monetization events.
+
+```kotlin
+DownloadSdk.setAnalyticsListener(
+    object : DownloadAnalyticsListener {
+        override fun onDownloadRequested(contentItem: DownloadModel) {
+            analytics.track("download_requested", contentItem.id)
+        }
+
+        override fun onMonetizationAllowed(contentItem: DownloadModel) {
+            analytics.track("download_allowed", contentItem.id)
+        }
+
+        override fun onDownloadEnqueued(
+            contentId: String,
+            sourceUrl: String,
+            sourceType: String,
+            qualityHeight: Int?,
+            qualityBitrate: Int?
+        ) {
+            analytics.track("download_enqueued", contentId)
+        }
+
+        override fun onDownloadFailed(
+            contentId: String,
+            errorCode: String?,
+            errorMessage: String?
+        ) {
+            analytics.track("download_failed", "$contentId:$errorCode")
+        }
+    }
+)
+```
+
+Events available:
+
+- `onDownloadRequested`
+- `onMonetizationAllowed`
+- `onMonetizationBlocked`
+- `onDownloadEnqueued`
+- `onDownloadStarted`
+- `onDownloadProgress`
+- `onDownloadPaused`
+- `onDownloadResumed`
+- `onDownloadCancelled`
+- `onDownloadCompleted`
+- `onDownloadFailed`
+
+## Custom Quality Selector
+
+HLS and DASH downloads can show quality options. If no custom selector is provided, the SDK uses its default dialog.
+
 ```kotlin
 DownloadButton(
     contentItem = downloadModel,
     customQualitySelector = { qualities, onSelect, onDismiss ->
-        CustomQualitySelectorBottomSheet(
-            qualities = qualities,
-            onDismiss = onDismiss,
-            onQualitySelected = onSelect
-        )
+        ModalBottomSheet(onDismissRequest = onDismiss) {
+            qualities.forEach { quality ->
+                ListItem(
+                    headlineContent = { Text(quality.label) },
+                    supportingContent = { Text("${quality.bitrate / 1000} kbps") },
+                    modifier = Modifier.clickable {
+                        onSelect(quality)
+                        onDismiss()
+                    }
+                )
+            }
+        }
     }
 )
 ```
-📌 If `customQualitySelector` is not provided, the SDK uses its default quality selector UI.
 
-### Custom Download Icons
+MP4 has no quality selector because it is a single progressive file.
 
-Override the default download icons based on the download status.
+## Custom Icons
 
-**Icon Provider Interface:**
-```kotlin
-fun interface DownloadIconProvider {
-    fun iconFor(status: Int?): Int
-}
-```
+Override icons for download states with `DownloadIconProvider`.
 
-**Usage:**
 ```kotlin
 DownloadButton(
     contentItem = downloadModel,
     iconProvider = DownloadIconProvider { status ->
         when (status) {
-            DownloadWorker.DOWNLOAD_STATUS_DOWNLOADING -> R.drawable.ic_downloading
-            DownloadWorker.DOWNLOAD_STATUS_COMPLETED -> R.drawable.ic_download_done
+            Constants.DOWNLOAD_STATUS_QUEUED -> R.drawable.ic_download_queued
+            Constants.DOWNLOAD_STATUS_DOWNLOADING -> R.drawable.ic_downloading
+            Constants.DOWNLOAD_STATUS_PAUSED -> R.drawable.ic_download_paused
+            Constants.DOWNLOAD_STATUS_COMPLETED -> R.drawable.ic_download_done
             else -> R.drawable.ic_download
         }
     }
 )
 ```
-📌 If `iconProvider` is not provided, the SDK's default icons are used.
 
-## 🔁 Download States
+Status values are strings:
 
-The SDK manages the following download states:
+| Status | Meaning |
+| --- | --- |
+| `queued` | Waiting for download slot. |
+| `downloading` | Actively downloading. |
+| `paused` | User paused the download. |
+| `completed` | Download finished. |
+| `failed` | Download failed. |
+| `removed` | Download was removed. |
 
-| State       | Description         |
-|-------------|---------------------|
-| `QUEUED`      | Waiting in queue    |
-| `DOWNLOADING` | Actively downloading|
-| `PAUSED`      | User paused         |
-| `COMPLETED`   | Download finished   |
-| `FAILED`      | Download failed     |
+## Receive Downloaded List Updates
 
+`DownloadButton` can report the full persisted downloaded list whenever it changes.
 
-## 🧠 Architecture Overview
+```kotlin
+var downloadedItems by remember {
+    mutableStateOf(emptyList<DownloadedContentEntity>())
+}
 
-*   **Media3 DownloadManager**: Core download engine.
-*   **Foreground DownloadService**: Ensures downloads continue in the background.
-*   **Room Database**: For persistence of download state.
-*   **WorkManager**: Fallback for ensuring download consistency.
-*   **Compose-based UI**: Modern, declarative UI.
-*   **SDK-owned State Management**: The client app does not need to manage download threads, services, notifications, or storage paths.
+DownloadButton(
+    contentItem = downloadModel,
+    onDownloadedListUpdate = { list ->
+        downloadedItems = list
+    }
+)
+```
 
-## ⚠️ Important Notes
+Host apps can use `DownloadedContentEntity.contentUrl`, `licenseUri`, `videoHeight`, `thumbnailUrl`, and `seasonImage` to build their offline playback screen.
 
-*   Always use `applicationContext` internally.
-*   Do not recreate `DownloadButton` with different IDs for the same content.
-*   Ensure HLS URLs are reachable.
-*   For DRM content, a valid DRM token is required.
+The persisted entity also exposes operational fields:
 
-## 🧪 Testing Checklist
+| Field | Meaning |
+| --- | --- |
+| `queuedAt` | Timestamp used for queue ordering. |
+| `failureCode` / `failureReason` | Final failure details after retries are exhausted. |
+| `retryCount` / `maxRetryCount` | Retry visibility for UI and analytics. |
+| `drmLicenseExpiresAt` | Host-provided DRM license expiry timestamp. |
+| `drmLicenseLastRefreshAt` | Last known DRM license refresh timestamp. |
+| `drmLicenseRefreshStatus` | Current DRM license refresh state. |
+| `drmOfflineKeySetId` | Persisted Widevine offline license key set for DRM MPD playback. |
+| `drmOfflineKeySetIdBase64` | Base64 `NO_WRAP` copy of the offline key set id for restore/renewal metadata. |
+| `drmScheme` | DRM scheme, currently `widevine` for supported offline DRM. |
+| `drmKeyId` | Host-provided Widevine key id metadata. |
+| `contentMimeType` | MIME type used in the Media3 download request. |
 
-The SDK is designed to handle the following scenarios safely:
-*   ✔ App backgrounded
-*   ✔ App killed
-*   ✔ Device reboot
-*   ✔ Network switch (Wi-Fi ↔ Mobile)
-*   ✔ Multiple downloads queued
+## Manual Controls
 
-## 📚 FAQ
+The default button opens a menu for active downloads:
 
-**❓ Do I need to manage notifications?**
+- Pause
+- Resume
+- Cancel
 
-No. The SDK handles notifications automatically.
+The host app usually does not need to call helper APIs directly. If a custom UI needs manual control, use:
 
-**❓ Can downloads resume after an app restart?**
+```kotlin
+ReelDownloadHelper.pauseDownload(context, contentId)
+ReelDownloadHelper.resumeDownload(context, contentId)
+ReelDownloadHelper.cancelDownload(context, contentId)
+```
 
-Yes. Downloads persist across app restarts.
+Resume uses the persisted download row, so it keeps previous progress, selected HLS/DASH stream keys, DRM license URL, and original source URL.
 
-**❓ Can the app icon be hidden?**
+For DRM license renewal, rebuild a fresh license URL and call:
 
-If installed as a system app, the icon can be hidden (this is an OS-level feature).
+```kotlin
+DownloadRepository
+    .instance(context)
+    .renewWidevineOfflineLicense(contentId, freshLicenseUri, expiresAt)
+```
 
-## 🛣️ Roadmap
+The repository prepares the MPD, requests a new Widevine offline license, replaces `drmOfflineKeySetId` and `drmOfflineKeySetIdBase64`, and updates expiry metadata.
 
-*   Remember last selected quality
-*   Auto-best quality selection
-*   Download analytics hooks
-*   DRM license refresh
-*   Lottie animated icons
-*   XML (View-based) support
+## ProGuard And R8
 
-## 🤝 Support
+The SDK ships consumer ProGuard rules for Media3 download classes, WorkManager workers, Kotlin metadata, Compose warnings, and SDK models. Third-party apps normally do not need extra rules.
 
-*   [GitHub Issues](https://github.com/kamleshmultitv/mtv-downloader/issues)
-*   SDK Support Team
+If the host app minifies aggressively and serializes SDK models directly, keep the model package:
 
-## 📄 License
+```proguard
+-keep class com.app.mtvdownloader.model.** { *; }
+```
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+## Common Integration Rules
 
----
+- Use a stable unique `id` per content item.
+- Do not reuse the same `id` for different videos.
+- Provide only valid, reachable URLs.
+- For HLS-backed DRM items, provide `hlsUrl`; for MPD-only DRM downloads, provide `mpdUrl`, `drm = "1"`, and a valid license URL in `drmToken`.
+- DRM MPD downloads created before offline `keySetId` support should be downloaded again to support true offline playback.
+- Request Android 13+ notification permission before starting downloads.
+- Test HLS, DASH, MP4, and DRM behavior on a real Android device.
+- Test app kill, network switch, pause, resume, cancel, and low-storage behavior before release.
 
-🚀 **MTV Downloader SDK** – Built for reliable, scalable, and customizable Android downloads.
+## Debug Logs
+
+Use logcat with the downloader tags when a download starts and then returns to the idle/failed state:
+
+```bash
+adb logcat -v time MtvDrmOffline:I DownloadWorker:D ReelDownloadHelper:D OfflineDrmLicenseUtil:D DownloadUtil:D ExoPlayerImplInternal:E WorkManager:E '*:S'
+```
+
+For DRM MPD failures, look for stage names such as `DRM_MANIFEST_PREPARE_FAILED`, `DRM_INIT_DATA_MISSING`, `DRM_OFFLINE_LICENSE_FAILED`, or `DRM_KEYSETID_EMPTY`. HTTP `401` means the Widevine license URL, token, encoded payload, entitlement, offline-license policy, package name, or signing certificate is being rejected by the license server.
+
+## Troubleshooting
+
+| Problem | Check |
+| --- | --- |
+| Button shows unsupported source | Confirm `id` and one of `hlsUrl`, `mpdUrl`, or `mp4Url` are non-empty and have a supported extension. |
+| DRM download does not start | If HLS is available, confirm `hlsUrl` is present and reachable. For MPD-only DRM, confirm `drm = "1"`, `mpdUrl` is non-empty, `drmToken` is a valid Widevine license URL that returns persistent/offline licenses, and the app package/signing is allowed by the license backend. |
+| DRM download plays online but not offline | Delete and re-download old DRM content so the SDK can persist `drmOfflineKeySetId`. Also confirm the license server allows offline playback duration. |
+| Notification does not appear | Request `POST_NOTIFICATIONS` on Android 13+ and call `DownloadSdk.init(application)`. |
+| Quality selector is empty | Confirm the HLS/MPD manifest exposes video variants/tracks and is reachable by the app. |
+| MP4 has no quality options | Expected. MP4 downloads as the original progressive file. |
+| Download restarts or duplicates | Use the same stable `id` for the same content and avoid changing IDs across recompositions. |
+
+## Minimal Third-Party Checklist
+
+1. Add JitPack.
+2. Add the `mtvdownloader` dependency.
+3. Add permissions.
+4. Call `DownloadSdk.init()` from `Application`.
+5. Request notification permission on Android 13+.
+6. Create a valid `DownloadModel`.
+7. Render `DownloadButton(contentItem = model)`.
+8. For paid content, pass a `DownloadMonetizationGate`.
+9. Test HLS, MPD, MP4, and DRM on device.

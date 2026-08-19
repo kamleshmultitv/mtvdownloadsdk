@@ -6,11 +6,14 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.database.ExoDatabaseProvider
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import com.app.mtvdownloader.model.DownloadSdkConfig
 import java.io.File
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -24,18 +27,31 @@ object DownloadUtil {
     private const val TAG = "DownloadUtil"
 
     private const val DOWNLOAD_DIR = "downloads"
-    private const val MAX_CACHE_BYTES = 500L * 1024L * 1024L // ✅ 500 MB (safe for HLS)
 
     @Volatile private var databaseProvider: ExoDatabaseProvider? = null
     @Volatile private var downloadCache: SimpleCache? = null
     @Volatile private var downloadManager: DownloadManager? = null
     @Volatile private var downloadDirectory: File? = null
     @Volatile private var downloadNotificationHelper: DownloadNotificationHelper? = null
+    @Volatile private var sdkConfig: DownloadSdkConfig = DownloadSdkConfig()
 
-    // ✅ Limit threads (disk + network safe)
+    // ✅ Limit threads using SDK config (disk + network safe)
     private val backgroundExecutor: Executor by lazy {
-        Executors.newFixedThreadPool(1)
+        Executors.newFixedThreadPool(sdkConfig.maxParallelDownloads)
     }
+
+    /* ---------------- CONFIG ---------------- */
+
+    @Synchronized
+    fun configure(config: DownloadSdkConfig) {
+        sdkConfig = config.sanitized()
+        downloadManager?.apply {
+            maxParallelDownloads = sdkConfig.maxParallelDownloads
+            minRetryCount = sdkConfig.minRetryCount
+        }
+    }
+
+    fun getConfig(): DownloadSdkConfig = sdkConfig
 
     /* ---------------- DATABASE ---------------- */
 
@@ -66,7 +82,7 @@ object DownloadUtil {
     @Synchronized
     fun getDownloadCache(context: Context): SimpleCache {
         return downloadCache ?: run {
-            val evictor = LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES)
+            val evictor = LeastRecentlyUsedCacheEvictor(sdkConfig.maxCacheBytes)
             val cache = SimpleCache(
                 getDownloadDirectory(context),
                 evictor,
@@ -106,6 +122,14 @@ object DownloadUtil {
             .setAllowCrossProtocolRedirects(true)
     }
 
+    fun getOfflinePlaybackDataSourceFactory(context: Context): DataSource.Factory {
+        return CacheDataSource.Factory()
+            .setCache(getDownloadCache(context.applicationContext))
+            .setUpstreamDataSourceFactory(null)
+            .setCacheWriteDataSinkFactory(null)
+            .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
+    }
+
     /* ---------------- DOWNLOAD MANAGER ---------------- */
 
     @Synchronized
@@ -120,8 +144,8 @@ object DownloadUtil {
                 backgroundExecutor
             ).apply {
                 // ✅ IMPORTANT SETTINGS
-                maxParallelDownloads = 1       // sequential downloads
-                minRetryCount = 3
+                maxParallelDownloads = sdkConfig.maxParallelDownloads
+                minRetryCount = sdkConfig.minRetryCount
             }
 
             downloadManager = manager
