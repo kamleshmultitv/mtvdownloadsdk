@@ -3,12 +3,12 @@ package com.app.videosdk.ui.sprite
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import androidx.core.graphics.drawable.toBitmap
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.app.videosdk.model.VttCue
+import com.app.videosdk.utils.SdkLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,8 +21,6 @@ import java.util.regex.Pattern
 import kotlin.math.abs
 
 object SpriteUtils {
-
-    private const val TAG = "SpriteThumbnail"
 
     // Generic media detection (vtt/jpg/png/webp) for parsing manifests.
     private val mediaPattern = Pattern.compile(
@@ -233,7 +231,7 @@ object SpriteUtils {
                     if (msg.contains("left the composition", ignoreCase = true)) {
                         null
                     } else {
-                        Log.w(TAG, "Coil load failed for $imageUrl: ${e.message}")
+                        SdkLogger.info("Coil sprite load failed for $imageUrl: ${e.message}")
                         null
                     }
                 }
@@ -263,7 +261,7 @@ object SpriteUtils {
                             BitmapFactory.decodeStream(bis)
                         }
                     } else {
-                        Log.w(TAG, "HTTP fallback failed (code ${conn.responseCode}) for $imageUrl")
+                        SdkLogger.info("HTTP sprite fallback failed (code ${conn.responseCode}) for $imageUrl")
                         null
                     }
                 } catch (e: CancellationException) {
@@ -273,7 +271,7 @@ object SpriteUtils {
                     if (msg.contains("left the composition", ignoreCase = true)) {
                         null
                     } else {
-                        Log.w(TAG, "HTTP fallback exception for $imageUrl: ${e.message}")
+                        SdkLogger.info("HTTP sprite fallback exception for $imageUrl: ${e.message}")
                         null
                     }
                 }

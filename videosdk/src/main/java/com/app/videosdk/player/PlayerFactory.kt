@@ -3,6 +3,7 @@ package com.app.videosdk.player
 import android.Manifest
 import android.content.Context
 import android.net.Uri
+import android.util.Base64
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresPermission
 import androidx.core.net.toUri
@@ -108,12 +109,12 @@ internal object PlayerFactory {
         val cache = content?.downloadCache
 
         val dataSourceFactory: DataSource.Factory =
-            if (cache != null) {
+            content?.cacheFactory ?: if (cache != null) {
                 CacheDataSource.Factory()
                     .setCache(cache)
-                    .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory())
+                    .setUpstreamDataSourceFactory(null)
                     .setCacheWriteDataSinkFactory(null)
-                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                    .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
             } else {
                 DefaultHttpDataSource.Factory()
             }
@@ -262,42 +263,17 @@ internal object PlayerFactory {
                 SdkLogger.debug("Using offline MediaItem")
 
                 val isDashOffline =
-                    completedDownload.request.uri.toString()
-                        .substringBefore("?")
-                        .endsWith(".mpd", ignoreCase = true)
+                    completedDownload.request.mimeType == MimeTypes.APPLICATION_MPD ||
+                        completedDownload.request.uri.toString()
+                            .substringBefore("?")
+                            .endsWith(".mpd", ignoreCase = true) ||
+                        (content.drm == "1" && !content.mpdUrl.isNullOrBlank())
 
                 if (isDashOffline) {
-                    buildOfflineDrmMediaItemOrNull(completedDownload)
-                        ?: run {
-                            SdkLogger.info(
-                                "Offline DASH without license; falling back to online"
-                            )
-                            onRecoveryStateChanged(
-                                PlaybackRecoveryState(
-                                    reason = PlaybackRecoveryReason.OFFLINE_DRM_LICENSE_MISSING,
-                                    action = if (onlineResolvedUri.isUsablePlaybackUri()) {
-                                        PlaybackRecoveryAction.FALLBACK_TO_ONLINE
-                                    } else {
-                                        PlaybackRecoveryAction.NONE
-                                    },
-                                    message = "Offline DASH download is missing a DRM keySetId",
-                                    attempt = 1
-                                )
-                            )
-                            if (onlineResolvedUri.isUsablePlaybackUri()) {
-                                buildOnlineMediaItem(
-                                    content = content,
-                                    resolvedUri = onlineResolvedUri,
-                                    drmToken = drmToken,
-                                    srt = srt,
-                                    adsLoader = adsLoader,
-                                    adsConfig = adsConfig,
-                                    exoPlayer = exoPlayer
-                                )
-                            } else {
-                                completedDownload.request.toMediaItem()
-                            }
-                        }
+                    buildOfflineDashMediaItem(
+                        download = completedDownload,
+                        content = content
+                    )
                 } else {
                     completedDownload.request.toMediaItem()
                 }
@@ -352,6 +328,7 @@ internal object PlayerFactory {
                     setDrmConfiguration(
                         MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
                             .setLicenseUri(drmToken)
+                            .setForceDefaultLicenseUri(true)
                             .setMultiSession(true)
                             .build()
                     )
@@ -380,24 +357,40 @@ internal object PlayerFactory {
     }
 
     @OptIn(UnstableApi::class)
-    private fun buildOfflineDrmMediaItemOrNull(download: Download): MediaItem? {
+    private fun buildOfflineDashMediaItem(
+        download: Download,
+        content: PlayerModel?
+    ): MediaItem {
+        val mediaItem = download.request.toMediaItem()
         val keySetId = download.request.keySetId
-        if (keySetId == null) {
-            SdkLogger.error(
-                "Offline DASH is missing keySetId; falling back to online"
-            )
-            return null
+            ?: content?.drmOfflineKeySetId
+            ?: decodeKeySetId(content?.drmOfflineKeySetIdBase64)
+
+        if (keySetId != null) {
+            SdkLogger.info("DRM_OFFLINE_PLAYBACK_PREPARE contentId=${download.request.id} keySetBytes=${keySetId.size}")
+            return mediaItem
+                .buildUpon()
+                .setDrmConfiguration(
+                    MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                        .setKeySetId(keySetId)
+                        .build()
+                )
+                .build()
         }
 
-        return download.request
-            .toMediaItem()
-            .buildUpon()
-            .setDrmConfiguration(
-                MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
-                    .setKeySetId(keySetId)
-                    .build()
-            )
-            .build()
+        SdkLogger.error("DRM_OFFLINE_PLAYBACK_FAILED contentId=${download.request.id} reason=missing_keySetId")
+
+        return mediaItem
+    }
+
+    private fun decodeKeySetId(keySetIdBase64: String?): ByteArray? {
+        val value = keySetIdBase64
+            ?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+            ?: return null
+
+        return runCatching {
+            Base64.decode(value, Base64.DEFAULT)
+        }.getOrNull()
     }
 
     private fun initializeSubTitleTracker(srt: String): MediaItem.SubtitleConfiguration =

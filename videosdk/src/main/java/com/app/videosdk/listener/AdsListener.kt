@@ -6,4 +6,5 @@ interface AdsListener {
     fun onAdCompleted()
     fun onAllAdsCompleted()
     fun onAdError(message: String)
+
 }

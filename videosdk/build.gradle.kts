@@ -1,10 +1,7 @@
-import org.gradle.api.publish.maven.MavenPublication
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-   // id("maven-publish")
 }
 
 android {
@@ -60,30 +57,19 @@ android {
  * ✅ Maven Publish (KEEP OUTSIDE android {})
  * This publishes ONLY videosdk (not app)
  */
-/*afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                from(components["release"])
-
-                groupId = "com.github.kamleshmultitv"
-                artifactId = "videosdk"
-                version = "mobile-1.0.54"
-            }
-        }
-    }
-}*/
 
 dependencies {
+    testImplementation(libs.junit)
+
     // Core
-    implementation(libs.androidx.core.ktx)
+    api(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.material3.android)
 
     // Compose
-    implementation(libs.ui)
-    implementation(libs.androidx.runtime)
+    api(libs.ui)
+    api(libs.androidx.runtime)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
@@ -91,11 +77,14 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.paging.compose)
     implementation(libs.ui.tooling.preview)
+    implementation(libs.androidx.compose.animation.core)
     debugImplementation(libs.ui.tooling)
 
     // Media3 / ExoPlayer
-    implementation(libs.androidx.media3.exoplayer)
-    implementation(libs.androidx.media3.ui)
+    api(libs.androidx.media3.common)
+    api(libs.androidx.media3.datasource)
+    api(libs.androidx.media3.exoplayer)
+    api(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.cast)
@@ -112,4 +101,7 @@ dependencies {
 
     implementation(libs.androidx.media3.exoplayer.ima)
     implementation(libs.interactivemedia)
+    implementation(libs.play.services.ads)
+    implementation(libs.androidx.media3.transformer)
+
 }

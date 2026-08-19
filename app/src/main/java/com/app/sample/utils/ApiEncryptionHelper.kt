@@ -7,7 +7,7 @@ class ApiEncryptionHelper {
     companion object {
         fun convertStringToBase64(text: String): String {
             val data = text.toByteArray(StandardCharsets.UTF_8)
-            return Base64.encodeToString(data, Base64.DEFAULT)
+            return Base64.encodeToString(data, Base64.NO_WRAP)
         }
     }
 }

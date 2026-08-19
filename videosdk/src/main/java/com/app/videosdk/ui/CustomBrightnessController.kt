@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness6
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.BrightnessHigh
+import androidx.compose.material.icons.filled.BrightnessLow
+import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,21 +33,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.app.videosdk.model.PlayerModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun CustomBrightnessController(
     modifier: Modifier = Modifier,
+    playerModel: PlayerModel? = null,
     onShowControls: (Boolean) -> Unit = {}
 ) {
     val activity = LocalActivity.current
 
     val defaultBrightness = remember { getWindowBrightness(activity) }
     val currentBrightness = remember { mutableFloatStateOf(defaultBrightness) }
-    val brightnessPercentage = (currentBrightness.floatValue * 100).toInt()
     val coroutineScope = rememberCoroutineScope()
     val dragGesture = Modifier.pointerInput(Unit) {
         detectVerticalDragGestures(
@@ -71,7 +75,32 @@ fun CustomBrightnessController(
         )
     }
 
-    // UI — unchanged
+    CustomBrightnessControllerUi(
+        modifier = modifier.then(dragGesture),
+        playerModel = playerModel,
+        currentBrightness = currentBrightness.floatValue
+    )
+}
+
+@Composable
+private fun CustomBrightnessControllerUi(
+    modifier: Modifier = Modifier,
+    playerModel: PlayerModel?,
+    currentBrightness: Float
+) {
+    val brightnessPercentage = (currentBrightness * 100).toInt()
+    val progressColor = customControlTintColor(
+        tintRes = playerModel?.customControls?.iconTintRes,
+        fallback = Color.Yellow
+    )
+
+    // 🔥 Dynamic brightness icon based on level
+    val brightnessIcon = when {
+        currentBrightness < 0.33f -> Icons.Default.BrightnessLow
+        currentBrightness < 0.66f -> Icons.Default.BrightnessMedium
+        else -> Icons.Default.BrightnessHigh
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -79,7 +108,6 @@ fun CustomBrightnessController(
             .background(Color.Transparent)
             .padding(16.dp)
             .size(60.dp, 200.dp)
-            .then(dragGesture)
     ) {
         IconButton(
             modifier = Modifier
@@ -87,11 +115,13 @@ fun CustomBrightnessController(
                 .size(24.dp),
             onClick = {}
         ) {
-            Icon(
-                imageVector = Icons.Default.Brightness6,
+            CustomIcon(
+                resId = playerModel?.customControls?.brightnessIconRes,
+                // 👇 Only change here
+                defaultIcon = brightnessIcon,
                 contentDescription = "Brightness",
                 modifier = Modifier.size(24.dp),
-                tint = Color.White
+                tint = playerModel?.customControls?.iconTintRes
             )
         }
 
@@ -107,9 +137,9 @@ fun CustomBrightnessController(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(currentBrightness.floatValue)
+                    .fillMaxHeight(currentBrightness)
                     .align(Alignment.BottomCenter)
-                    .background(Color.Yellow)
+                    .background(progressColor)
             )
         }
 
@@ -126,6 +156,7 @@ fun CustomBrightnessController(
     }
 }
 
+
 fun getWindowBrightness(activity: Activity?): Float {
     val attr = activity?.window?.attributes
     return attr?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f
@@ -135,4 +166,13 @@ fun setWindowBrightness(activity: Activity?, brightness: Float) {
     activity?.window?.attributes = activity.window?.attributes?.apply {
         screenBrightness = brightness.coerceIn(0f, 1f)
     }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+fun CustomBrightnessControllerPreview() {
+    CustomBrightnessControllerUi(
+        playerModel = null,
+        currentBrightness = 0.7f
+    )
 }

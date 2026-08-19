@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity(), PipListener {
         }
     }
 
-    override fun onPipRequested() {
+    override fun onPipRequested(isPipActive: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val aspectRatio = Rational(16, 9) // Adjust based on your video aspect ratio
             val params = PictureInPictureParams.Builder()

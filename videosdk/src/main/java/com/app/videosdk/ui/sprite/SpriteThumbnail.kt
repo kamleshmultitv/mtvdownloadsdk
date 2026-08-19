@@ -1,7 +1,6 @@
 package com.app.videosdk.ui.sprite
 
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -22,13 +21,12 @@ import com.app.videosdk.ui.sprite.SpriteUtils.findCueForPosition
 import com.app.videosdk.ui.sprite.SpriteUtils.loadBitmapWithFallback
 import com.app.videosdk.ui.sprite.SpriteUtils.parseVttString
 import com.app.videosdk.ui.sprite.SpriteUtils.resolveRelativeUrl
+import com.app.videosdk.utils.SdkLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
-
-private const val TAG = "SpriteThumbnail"
 
 @Composable
 fun SpriteThumbnail(
@@ -105,7 +103,7 @@ fun SpriteThumbnail(
             }
         } catch (_: CancellationException) {
         } catch (e: Exception) {
-            Log.w(TAG, "Sprite load error: ${e.message}")
+            SdkLogger.info("Sprite load error: ${e.message}")
         }
     }
 
@@ -132,10 +130,16 @@ fun SpriteThumbnail(
     /* ---------------- SOURCE RECT ---------------- */
 
     val srcRect = remember(spriteBitmap, sprW, sprH, cues, activeCue, positionMs) {
+        val cue = activeCue
         if (spriteBitmap == null || sprW == 0 || sprH == 0) {
             Quad(0, 0, 1, 1)
-        } else if (activeCue?.x != null) {
-            Quad(activeCue!!.x!!, activeCue!!.y!!, activeCue!!.w!!, activeCue!!.h!!)
+        } else if (
+            cue?.x != null &&
+            cue.y != null &&
+            cue.w != null &&
+            cue.h != null
+        ) {
+            Quad(cue.x, cue.y, cue.w, cue.h)
         } else {
             val usedCols = max(1, columns)
             val total = thumbnailsCount ?: usedCols
@@ -169,7 +173,8 @@ fun SpriteThumbnail(
 
     /* ---------------- DRAW ---------------- */
 
-    val img = spriteBitmap!!.asImageBitmap()
+    val bitmap = spriteBitmap ?: return
+    val img = bitmap.asImageBitmap()
 
     Box(
         modifier = modifier

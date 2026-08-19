@@ -22,6 +22,7 @@ import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_DOWNLOADING
 import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_PAUSED
 import com.app.mtvdownloader.utils.Constants.DOWNLOAD_STATUS_QUEUED
 import com.app.sample.R
+import com.app.sample.download.SampleDownloadMonetization
 import com.app.sample.model.ContentItem
 import com.app.sample.utils.FileUtils.buildDownloadContentList
 
@@ -83,6 +84,7 @@ fun ContentCard(
                         R.drawable.ic_download
                 }
             },
+            monetizationGate = SampleDownloadMonetization.gate,
             onDownloadedListUpdate = { list ->
                 downloadContentList(list)
             }

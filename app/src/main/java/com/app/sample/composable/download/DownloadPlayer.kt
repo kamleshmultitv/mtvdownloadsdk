@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import com.app.mtvdownloader.local.entity.DownloadedContentEntity
 import com.app.sample.R
@@ -18,15 +19,16 @@ fun DownloadPlayer(
     downloadedContentEntity: DownloadedContentEntity,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorResource(R.color.ic_launcher_background))
     ) {
         MtvVideoPlayerSdk(
-            contentList = buildContentListFromDownloaded(downloadedContentEntity),
+            contentList = buildContentListFromDownloaded(context, downloadedContentEntity),
             index = 0,
-            startInFullScreen = true,
             onPlayerBack = {},
             setFullScreen = {  },
             playerStateListener = object : PlayerStateListener {

@@ -14,6 +14,7 @@ A modern **Android Video Player SDK** built with **Media3** and **Jetpack Compos
 * 📝 Subtitles (SRT)
 * ⏩ Playback speed & quality selection
 * IMA ads
+* Dynamic OTT age-rating overlay sourced from the video API model
 
 ---
 
@@ -108,6 +109,12 @@ fun MtvVideoPlayerSdk(
 
 ```kotlin
 data class PlayerModel(
+    val id: String? = null,
+    val title: String? = null,
+    val videoUrl: String? = null,
+    val thumbnail: String? = null,
+    val ageRating: String? = null,
+    val contentRating: String? = null, // supported backend alias
     val hlsUrl: String? = null,
     val mpdUrl: String? = null,
     val liveUrl: String? = null,
@@ -128,6 +135,10 @@ data class PlayerModel(
 )
 ```
 
+The SDK displays `ageRating` exactly as received. If it is blank or absent,
+`contentRating` is checked as the alternate API field. If neither contains text,
+no badge is rendered. There is no default rating and no rating mapping.
+
 ---
 
 ## ▶️ SDK Usage (Compose)
@@ -147,6 +158,53 @@ MtvVideoPlayerSdk(
     }
 )
 ```
+
+To replace the active video imperatively, pass a `PlayerController` to the composable:
+
+```kotlin
+val player = remember { PlayerController() }
+
+MtvVideoPlayerSdk(
+    controller = player,
+    onPlayerBack = {},
+    setFullScreen = {}
+)
+
+player.play(
+    PlayerModel(
+        id = apiVideo.id,
+        title = apiVideo.title,
+        videoUrl = apiVideo.videoUrl,
+        thumbnail = apiVideo.thumbnail,
+        ageRating = apiVideo.ageRating
+    )
+)
+```
+
+### XML / View usage
+
+```xml
+<com.app.videosdk.ui.MtvVideoPlayerView
+    android:id="@+id/player"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />
+```
+
+```kotlin
+binding.player.play(video)
+
+override fun onPictureInPictureModeChanged(inPip: Boolean) {
+    super.onPictureInPictureModeChanged(inPip)
+    binding.player.setInPictureInPictureMode(inPip)
+}
+```
+
+Both player surfaces wait 2.5 seconds after playback starts, reveal the classification
+from left to right, keep it visible for five seconds, collapse it from right to left,
+then restore the content title in the same top-bar slot. The rating and title are never
+shown together. The rating shows again after a replay and is suppressed in PiP. The
+standalone `PlayerAgeRatingOverlay` composable and `PlayerAgeRatingOverlayView` are
+also public for custom player layouts.
 
 ---
 
