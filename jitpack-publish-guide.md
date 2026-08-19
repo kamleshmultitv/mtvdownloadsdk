@@ -10,7 +10,7 @@ The downloader module is ready for JitPack publishing:
 - Publication plugin: `maven-publish`
 - Group id: `com.github.kamleshmultitv`
 - Artifact id: `mtvdownloader`
-- Current artifact version/tag: `download-1.1.0`
+- Current artifact version/tag: `download-1.1.1`
 - JDK: `openjdk17` in `jitpack.yml`
 - JitPack install command: `sh gradlew :mtvdownloader:publishToMavenLocal`
 
@@ -51,7 +51,7 @@ afterEvaluate {
 
                 groupId = "com.github.kamleshmultitv"
                 artifactId = "mtvdownloader"
-                version = "download-1.1.0"
+                version = "download-1.1.1"
             }
         }
     }
@@ -99,11 +99,11 @@ git add mtvdownloader gradle jitpack.yml README.md mtvdownloader/README.md monat
 Adjust the `git add` command if app/sample docs or handoff docs also belong in the release. Do not stage local APK outputs, local secrets, unrelated IDE files, or `google-services.json`.
 
 ```bash
-git commit -m "Release downloader SDK download-1.1.0"
+git commit -m "Release downloader SDK download-1.1.1"
 ```
 
 ```bash
-git tag download-1.1.0
+git tag download-1.1.1
 ```
 
 ```bash
@@ -111,13 +111,13 @@ git push origin main
 ```
 
 ```bash
-git push origin download-1.1.0
+git push origin download-1.1.1
 ```
 
 Optional GitHub release command, if you use the GitHub CLI:
 
 ```bash
-gh release create download-1.1.0 --title "download-1.1.0" --notes "MTV Downloader SDK release download-1.1.0"
+gh release create download-1.1.1 --title "download-1.1.1" --notes "MTV Downloader SDK release download-1.1.1"
 ```
 
 If your branch is not `main`, replace `main` with the actual release branch.
@@ -133,7 +133,7 @@ After pushing the tag:
 https://github.com/kamleshmultitv/mtvdownloadsdk
 ```
 
-3. Select the `download-1.1.0` tag.
+3. Select the `download-1.1.1` tag.
 4. Click `Get it`.
 5. Open the build log and confirm `BUILD SUCCESSFUL`.
 
@@ -160,7 +160,7 @@ Use the dependency already documented by this repo:
 
 ```kotlin
 dependencies {
-    implementation("com.github.kamleshmultitv:mtvdownloader:download-1.1.0")
+    implementation("com.github.kamleshmultitv:mtvdownloader:download-1.1.1")
 }
 ```
 
@@ -168,7 +168,7 @@ If JitPack exposes this repo as a multi-module build instead, use the module coo
 
 ```kotlin
 dependencies {
-    implementation("com.github.kamleshmultitv.mtvdownloadsdk:mtvdownloader:download-1.1.0")
+    implementation("com.github.kamleshmultitv.mtvdownloadsdk:mtvdownloader:download-1.1.1")
 }
 ```
 
@@ -233,15 +233,15 @@ Current release:
 git diff --check
 sh gradlew :mtvdownloader:testDebugUnitTest :mtvdownloader:publishToMavenLocal
 git add mtvdownloader gradle jitpack.yml README.md mtvdownloader/README.md monatization.md jitpack-publish-guide.md
-git commit -m "Release downloader SDK download-1.1.0"
-git tag download-1.1.0
+git commit -m "Release downloader SDK download-1.1.1"
+git tag download-1.1.1
 git push origin main
-git push origin download-1.1.0
+git push origin download-1.1.1
 ```
 
 Consumer install:
 
 ```kotlin
 maven("https://jitpack.io")
-implementation("com.github.kamleshmultitv:mtvdownloader:download-1.1.0")
+implementation("com.github.kamleshmultitv:mtvdownloader:download-1.1.1")
 ```

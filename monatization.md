@@ -79,7 +79,7 @@ Previous risk level: Medium-High, because the module had HLS-only URL routing in
 - Added instrumentation source coverage for SDK init, WorkManager availability, and `MediaDownloadService` class wiring.
 - Updated third-party README with install, setup, HLS/MPD/MP4/DRM usage, monetization, config, analytics, failure/retry fields, and troubleshooting.
 - Added `mtvdownloader/CHANGELOG.md`.
-- Bumped downloader artifact version to `download-1.1.0`.
+- Bumped downloader artifact version to `download-1.1.1`.
 - Updated `jitpack.yml` to publish `:mtvdownloader`.
 
 ## Completed Monetization Steps
@@ -137,7 +137,7 @@ These items cannot be honestly marked complete from code inspection alone:
 | DRM offline downloads | Medium-High | Code now acquires and persists offline Widevine `keySetId`, but real behavior still depends on package/signing whitelist, token audience, payload user/package id, license policy, expiry, and device support. | Run DRM MPD on device, confirm `DRM_LICENSE_URL_BUILT mode=offline`, confirm `DRM_PACKAGE_SIGNING_CHECK`, confirm backend whitelist for package/signing/user/package id, confirm `DRM_OFFLINE_LICENSE_SUCCESS`, verify expiry, and delete/re-download old DRM items created before `drmOfflineKeySetIdBase64` existed. |
 | Device lifecycle | Medium | WorkManager and foreground service behavior must be validated under OS lifecycle conditions. | Run instrumentation/device tests for app kill, relaunch, background, and network changes. |
 | Storage pressure | Medium | Cache eviction behavior depends on actual device storage and content size. | Test low-storage and long-form downloads with configured cache sizes. |
-| Public API rollout | Low-Medium | New model/config/listener fields require publishing and consumer rebuild. | Publish `download-1.1.0`, document migration, and keep added model fields at the end. |
+| Public API rollout | Low-Medium | New model/config/listener fields require publishing and consumer rebuild. | Publish `download-1.1.1`, document migration, and keep added model fields at the end. |
 | Package/signing/license server | Medium-High | Widevine itself does not require a package name, but the EZDRM/backend license endpoint can reject requests by package name, signing certificate, app id, auth token, payload user id, or payload package id. | Use `adb logcat` to capture `DRM_LICENSE_URL_BUILT` and `DRM_PACKAGE_SIGNING_CHECK`, compare with AOL `com.sspt.aol`, and ask the DRM/backend team to whitelist the actual consuming app package, signing SHA-256, and entitlement payload values. |
 
 ## Format Behavior
@@ -165,7 +165,7 @@ These items cannot be honestly marked complete from code inspection alone:
 - Confirm the Widevine license server supports persistent/offline licenses for downloadable DRM MPD content.
 - Confirm the Widevine license server accepts the actual package name and signing certificate.
 - Delete and re-download any old DRM MPD content created before `drmOfflineKeySetId` support.
-- Publish `download-1.1.0`.
+- Publish `download-1.1.1`.
 - Verify JitPack publishes `:mtvdownloader`.
 - Confirm third-party apps call `DownloadSdk.init()` before using `DownloadButton`.
 - Confirm paid-download apps use `DownloadMonetizationGate` plus backend/DRM enforcement.

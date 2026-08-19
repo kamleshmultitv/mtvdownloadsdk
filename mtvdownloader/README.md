@@ -2,6 +2,12 @@
 
 Android downloader SDK for third-party apps that need offline downloads for HLS, DASH/MPD, and MP4 content. The SDK owns the Media3 download queue, foreground service, notification, Room download state, pause/resume/cancel actions, and a Compose download button.
 
+For a step-by-step third-party app integration guide, see:
+
+```text
+../downloadsdk-implementation-guide.md
+```
+
 ## What It Supports
 
 | Format | Field | Quality Selection | Notes |
@@ -30,11 +36,11 @@ Add the SDK dependency.
 
 ```kotlin
 dependencies {
-    implementation("com.github.kamleshmultitv:mtvdownloader:download-1.1.0")
+    implementation("com.github.kamleshmultitv:mtvdownloader:download-1.1.1")
 }
 ```
 
-Replace `download-1.1.0` with the JitPack tag used by your release if you publish a newer version.
+Replace `download-1.1.1` with the JitPack tag used by your release if you publish a newer version.
 
 ## Android Setup
 
