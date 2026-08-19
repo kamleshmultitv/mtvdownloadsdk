@@ -12,7 +12,7 @@ The downloader module is ready for JitPack publishing:
 - Artifact id: `mtvdownloader`
 - Current artifact version/tag: `download-1.1.0`
 - JDK: `openjdk17` in `jitpack.yml`
-- JitPack command: `sh gradlew :mtvdownloader:publishToMavenLocal`
+- JitPack install command: `sh gradlew :mtvdownloader:publishToMavenLocal`
 
 `publishToMavenLocal` has been verified locally for `:mtvdownloader`.
 
@@ -24,9 +24,8 @@ The downloader module is ready for JitPack publishing:
 jdk:
   - openjdk17
 
-build:
-  commands:
-    - sh gradlew :mtvdownloader:publishToMavenLocal
+install:
+  - sh gradlew :mtvdownloader:publishToMavenLocal
 ```
 
 `mtvdownloader/build.gradle.kts` must keep:
@@ -140,6 +139,8 @@ https://github.com/kamleshmultitv/mtvdownloadsdk
 
 JitPack builds the project on demand the first time the dependency is requested, so the first resolve may take longer.
 
+If a tag was already pushed and failed because of a bad `jitpack.yml`, do not assume JitPack will use your latest branch commit. A tag points to a specific commit. The clean fix is to commit the corrected `jitpack.yml`, bump the SDK version, and create a new tag. Only reuse the same tag if you deliberately delete/recreate the Git tag and remove/retry the failed JitPack build.
+
 ## Consumer Dependency
 
 Add JitPack in the consuming app `settings.gradle.kts`:
@@ -205,7 +206,9 @@ Keep the Gradle publication version and Git tag the same. It makes dependency st
 | Problem | Check |
 | --- | --- |
 | JitPack cannot find the repo | Confirm the GitHub repo URL is correct and accessible to JitPack. |
-| JitPack builds the app instead of the SDK | Confirm `jitpack.yml` runs `sh gradlew :mtvdownloader:publishToMavenLocal`. |
+| Error parsing yml config file / Error reading Map: build | Use top-level `install:` in `jitpack.yml`; do not use `build.commands`. |
+| Same tag still fails after fixing `jitpack.yml` | Confirm the tag points to the commit containing the fixed file, or create a new tag. |
+| JitPack builds the app instead of the SDK | Confirm `jitpack.yml` install step runs `sh gradlew :mtvdownloader:publishToMavenLocal`. |
 | JDK mismatch | Confirm `jitpack.yml` uses `openjdk17`. |
 | Dependency does not resolve | Confirm the tag was pushed, the JitPack build succeeded, and the consuming app has `maven("https://jitpack.io")`. |
 | Wrong dependency coordinate | Use the dependency string shown on the JitPack repo page after a successful build. |
